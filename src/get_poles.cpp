@@ -26,12 +26,13 @@ class get_poles {
 
 	void chatterCallback(const sensor_msgs::LaserScan& scan) {
 		//normalize angle for 360° = 2PI
-		double k_cor = 360.0/270;
+		double lsr_scan_angle = 270.0;
+		double k_cor = lsr_scan_angle/360.0*2*PI/(scan.angle_max-scan.angle_min);	//correction factor for angle
 		std::vector<scan_point> pole_scans;
 		//extract pole scans
 		for (int i = 0; i < scan.intensities.size(); i++) {
 			//TODO: some kind of clever function
-			if (scan.intensities[i] > -20*scan.ranges[i]+1200) {
+			if (scan.intensities[i] > 1000) {
 				scan_point temp;
 				temp.range = scan.ranges[i];
 				temp.intensity = scan.intensities[i];
@@ -39,6 +40,8 @@ class get_poles {
 				pole_scans.push_back(temp);
 			}
 		}
+
+		ROS_INFO("Found %lu pole points", pole_scans.size());
 		
 		//average multiple points of single poles
 		std::vector<scan_point> av_pole_scans;
@@ -76,6 +79,7 @@ class get_poles {
 				
 			}
 		}
+		ROS_INFO("Found %lu poles", av_pole_scans.size());
 		//publish pole data
 		laser_loc::pole_scan data;
 		for (int i = 0; i < av_pole_scans.size(); i++) {

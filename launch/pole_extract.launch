@@ -1,0 +1,9 @@
+<launch>
+
+	<group ns="localization">
+		<node pkg="laser_loc" name="bot_loc" type="bot_loc" output="screen"/>
+		<node pkg="laser_loc" name="get_poles" type="get_poles" output="screen"/>
+		<node pkg="laser_loc" name="fake_scan" type="fake_scan" output="screen"/>
+	</group>
+
+</launch>

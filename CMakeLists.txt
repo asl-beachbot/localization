@@ -18,6 +18,8 @@ add_executable(get_poles_test src/get_poles_test.cpp)
 target_link_libraries(get_poles_test ${catkin_LIBRARIES})
 add_executable(get_poles src/get_poles.cpp)
 target_link_libraries(get_poles ${catkin_LIBRARIES})
+add_executable(fake_scan src/fake_scan.cpp)
+target_link_libraries(fake_scan ${catkin_LIBRARIES})
 
 ## Declare a catkin package
 catkin_package()
