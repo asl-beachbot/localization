@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include "laser_loc/pole_scan.h"
+#include "laser_loc/scan_vector.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <sstream>
@@ -78,7 +78,7 @@ class bot_loc {
     ROS_INFO("[%f %f] %f rad t: %fs\n",x,y,theta,delta_t);
   }
 
-  void chatterCallback(const laser_loc::pole_scan& pole_scan)
+  void chatterCallback(const laser_loc::scan_vector& pole_scan)
   {
     double a_distance = pole_scan.poles[0].distance;
     double b_distance = pole_scan.poles[1].distance;

@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "sensor_msgs/LaserScan.h"
-#include "laser_loc/pole_scan.h"
+#include "laser_loc/scan_vector.h"
 #include "laser_loc/scan_point.h"
 #include <cmath>
 #include <vector>
@@ -31,7 +31,7 @@ class get_poles {
 		std::vector<scan_point> pole_scans;
 		//extract pole scans
 		for (int i = 0; i < scan.intensities.size(); i++) {
-			//TODO: some kind of clever function
+			//TODO: some kind of clever function for intensities
 			if (scan.intensities[i] > 1000) {
 				scan_point temp;
 				temp.range = scan.ranges[i];
@@ -81,7 +81,7 @@ class get_poles {
 		}
 		ROS_INFO("Found %lu poles", av_pole_scans.size());
 		//publish pole data
-		laser_loc::pole_scan data;
+		laser_loc::scan_vector data;
 		for (int i = 0; i < av_pole_scans.size(); i++) {
 			laser_loc::scan_point temp;
 			temp.distance = av_pole_scans[i].range;
@@ -95,19 +95,11 @@ class get_poles {
 public:
 	get_poles() {
 		sub = n.subscribe("scan", 1000, &get_poles::chatterCallback, this);
-		pub = n.advertise<laser_loc::pole_scan>("pole_scan",1000);
+		pub = n.advertise<laser_loc::scan_vector>("pole_scan",1000);
 		ros::spin();
 
 
 	}
-
-
-
-
-
-
-
-
 };
 
 int main(int argc, char **argv) {
