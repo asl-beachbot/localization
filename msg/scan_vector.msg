@@ -1,0 +1,1 @@
+scan_point[] poles
