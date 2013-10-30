@@ -86,7 +86,7 @@ class get_poles {
 			laser_loc::scan_point temp;
 			temp.distance = av_pole_scans[i].range;
 			temp.angle = av_pole_scans[i].angle;
-			data.poles.push_back(temp);
+			data.scans.push_back(temp);
 		}
 		pub.publish(data);
 	}

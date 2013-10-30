@@ -5,6 +5,7 @@
 #include "geometry_msgs/PoseStamped.h"
 #include <sstream>
 #include <cmath>
+#include <cassert>
 
 #define PI 3.141592653589
 
@@ -47,6 +48,7 @@ class bot_loc {
     //check which pose is the correct one
     bool first = (PI + atan2(y1-yp2,x1-xp2)-theta1-b_ang < 0.1);    //0.1 is possibly unreliable; needed for testing, should be adjusted
     bool second = (PI + atan2(y1-yp2,x1-xp2)-theta2-b_ang < 0.1);
+    assert(first || second);
     
     //input correct pose
     double theta, x, y;
