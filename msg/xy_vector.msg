@@ -1,1 +1,1 @@
-xy_cords[] poles
+xy_cords[] points

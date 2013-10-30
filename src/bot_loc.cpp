@@ -80,10 +80,10 @@ class bot_loc {
 
   void chatterCallback(const laser_loc::scan_vector& pole_scan)
   {
-    double a_distance = pole_scan.poles[0].distance;
-    double b_distance = pole_scan.poles[1].distance;
-    double a_angle = pole_scan.poles[0].angle;
-    double b_angle = pole_scan.poles[1].angle;
+    double a_distance = pole_scan.scans[0].distance;
+    double b_distance = pole_scan.scans[1].distance;
+    double a_angle = pole_scan.scans[0].angle;
+    double b_angle = pole_scan.scans[1].angle;
     ROS_INFO("First pole:\td [%f] ang [%f]", a_distance, a_angle);
     ROS_INFO("Second pole:\td [%f] ang [%f]", b_distance, b_angle);
     calcPose(a_distance, a_angle, b_distance, b_angle);
