@@ -14,10 +14,36 @@
 class init_poles {
 	ros::NodeHandle n;
 	ros::Subscriber sub;
-	ros::Publisher pub_xy;
-	ros::Publisher pub_scan;
-	std::vector<sensor_msgs::LaserScan> scans;
+	ros::Publisher pub;
+	std::vector<laser_loc::scan_vector> scans;
 
+	//initiation process
+	void init() {
+		//pump callbacks for 5 seconds until at least 25 scans arrive
+		do {	
+			ros::Time begin = ros::Time::now();
+			ros::Rate loop_rate(25);
+			while((ros::Time::now()-begin).sec < 5) {
+				ros::spinOnce();
+				ROS_INFO("%lu/125", scans.size());
+				loop_rate.sleep();
+			}
+		} while(!init_check());
+		ROS_INFO("%lu/125 scans came through", scans.size());
+		
+		laser_loc::scan_vector av_scans;
+		average(scans, av_scans);	//writes to latter vector
+		
+		laser_loc::xy_vector xy_botcs;
+		scanToCoords(av_scans, xy_botcs);	//writes to latter vector
+		
+		laser_loc::xy_vector xy_polecs;
+		rotateCS(xy_botcs, xy_polecs);	//writes to latter vector
+		ROS_INFO("rotate success");
+		for (int i = 0; i < xy_polecs.points.size(); i++) ROS_INFO("pole at [%f %f]", xy_polecs.points[i].x, xy_polecs.points[i].y);
+	}
+
+	//check if enough scan data came trough
 	bool init_check() {
 		if(scans.size() < 25) {
 			ROS_INFO("Pole initialization failed");
@@ -27,7 +53,28 @@ class init_poles {
 		else return true;
 	}
 
-	void init() {
+	//averages the collection of pole scan data
+	void average(const std::vector<laser_loc::scan_vector> &collection, laser_loc::scan_vector average) {
+		//empty vector and push # of poles elements
+		average.scans.clear();
+		for (int i = 0; i < collection[0].scans.size(); i++) {
+			laser_loc::scan_point temp;
+			temp.distance = 0;
+			temp.angle = 0;
+			average.scans.push_back(temp);
+		}
+		//sum all ranges, angles
+		for (int i = 0; i < collection.size(); i++) {
+			for (int j = 0; j < collection[i].scans.size(); j++) {
+				average.scans[j].distance += collection[i].scans[j].distance;
+				average.scans[j].angle += collection[i].scans[j].angle;
+			}
+		}
+		//average ranges, angles
+		for (int i = 0; i < average.scans.size(); i++) {
+			average.scans[i].distance /= collection.size();
+			average.scans[i].angle /= collection.size();
+		}
 
 	}
 
@@ -54,8 +101,9 @@ class init_poles {
 				closest_i = i;
 			}
 		}*/
-
+		//////////HIER STIRBT ER IRGENDWO///////////////////
 		//shift cs so 0,0 is at pole 1
+		ROS_INFO("started rotation");
 		double x_dif = botcs.points[0].x;
 		double y_dif = botcs.points[0].y;
 		for (int i = 0; i < botcs.points.size(); i++) {
@@ -64,9 +112,11 @@ class init_poles {
 			temp.y = botcs.points[i].y - y_dif;
 			polecs.points.push_back(temp);
 		}
+		ROS_INFO("move success");
 		assert(polecs.points[0].x == 0);
 		assert(polecs.points[0].y == 0);
 
+		ROS_INFO("assert success");
 		//rotate cs so that pole 2 is x,0
 		//TODO: make finding pole 2 smarter
 		double rot_ang = atan2(polecs.points[1].y-polecs.points[0].y, polecs.points[1].x-polecs.points[0].x);
@@ -77,29 +127,16 @@ class init_poles {
 		assert(polecs.points[1].y < 0.01);
 	}
 
-	void chatterCallback(const sensor_msgs::LaserScan& temp) {
+	void chatterCallback(const laser_loc::scan_vector temp) {
 		scans.push_back(temp);
 	}
 
 
 public:
 	init_poles() {
-		sub = n.subscribe("scan", 1000, &init_poles::chatterCallback, this);
-		pub_xy = n.advertise<laser_loc::xy_vector>("pole_positions",1000);
-		//pump callbacks for 5 seconds until at least 25 scans arrive
-		do {	
-			ros::Time begin = ros::Time::now();
-			while((ros::Time::now()-begin).sec < 5) {
-				ros::spinOnce();
-			}
-
-		} while(!init_check());
-		//TODO: write service to average mutliple points
-		laser_loc::scan_vector av_scans;
-		laser_loc::xy_vector coords_botcs;
-		scanToCoords(av_scans, coords_botcs);
-		laser_loc::xy_vector coords_polecs;
-		rotateCS(coords_botcs, coords_polecs);
+		sub = n.subscribe("pole_scan", 1000, &init_poles::chatterCallback, this);
+		pub = n.advertise<laser_loc::xy_vector>("pole_positions",1000);
+		init();
 	}
 
 
@@ -108,6 +145,5 @@ public:
 int main(int argc, char **argv) {
 	ros::init(argc, argv, "init_poles");
 	init_poles* init = new init_poles();
-	
 
 }

@@ -96,7 +96,9 @@ public:
 	get_poles() {
 		sub = n.subscribe("scan", 1000, &get_poles::chatterCallback, this);
 		pub = n.advertise<laser_loc::scan_vector>("pole_scan",1000);
+		ros::Rate loop_rate(25);
 		ros::spin();
+		loop_rate.sleep();
 
 
 	}
