@@ -33,6 +33,7 @@ class init_poles {
 		
 		laser_loc::scan_vector av_scans;
 		average(scans, av_scans);	//writes to latter vector
+		ROS_INFO("av_scans size %lu", av_scans.scans.size());
 		
 		laser_loc::xy_vector xy_botcs;
 		scanToCoords(av_scans, xy_botcs);	//writes to latter vector
@@ -54,7 +55,7 @@ class init_poles {
 	}
 
 	//averages the collection of pole scan data
-	void average(const std::vector<laser_loc::scan_vector> &collection, laser_loc::scan_vector average) {
+	void average(const std::vector<laser_loc::scan_vector> &collection, laser_loc::scan_vector &average) {
 		//empty vector and push # of poles elements
 		average.scans.clear();
 		for (int i = 0; i < collection[0].scans.size(); i++) {
@@ -79,7 +80,7 @@ class init_poles {
 	}
 
 	//transforms vector of scan data to vector of xy coordinates in robot cs
-	void scanToCoords(const laser_loc::scan_vector& scan, laser_loc::xy_vector& coords) {
+	void scanToCoords(const laser_loc::scan_vector &scan, laser_loc::xy_vector &coords) {
 		for (int i = 0; i < scan.scans.size(); i++) {
 			laser_loc::xy_cords point;
 			point.x = scan.scans[i].distance*cos(scan.scans[i].angle);
@@ -89,7 +90,7 @@ class init_poles {
 	}
 
 	//rotates the CS so that line between pole 1 & 2 is base line
-	void rotateCS(const laser_loc::xy_vector botcs, laser_loc::xy_vector polecs) {
+	void rotateCS(const laser_loc::xy_vector botcs, laser_loc::xy_vector &polecs) {
 		/*/find closest pole
 		int closest_i = 0;
 		double dist = 1000000;
@@ -104,8 +105,10 @@ class init_poles {
 		//////////HIER STIRBT ER IRGENDWO///////////////////
 		//shift cs so 0,0 is at pole 1
 		ROS_INFO("started rotation");
+		ROS_INFO("botcs size %lu", botcs.points.size());
 		double x_dif = botcs.points[0].x;
 		double y_dif = botcs.points[0].y;
+		ROS_INFO("registered coords");
 		for (int i = 0; i < botcs.points.size(); i++) {
 			laser_loc::xy_cords temp;
 			temp.x = botcs.points[i].x - x_dif;
