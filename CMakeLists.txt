@@ -6,16 +6,16 @@ project(localization)
 find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs genmsg)
 
 ## Declare ROS messages and services
-add_message_files(DIRECTORY msg FILES xy_vector.msg scan_vector.msg scan_point.msg xy_cords.msg)
+add_message_files(DIRECTORY msg FILES xy_vector.msg scan_vector.msg scan_point.msg xy_point.msg)
 
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs)
 
 ##add executables
 
-add_executable(localization src/localization.cpp)
-target_link_libraries(localization ${catkin_LIBRARIES})
-add_dependencies(localization localization_gencpp)
+add_executable(locate src/locate.cpp)
+target_link_libraries(locate ${catkin_LIBRARIES})
+add_dependencies(locate locate_gencpp)
 
 ## Declare a catkin package
 catkin_package()
