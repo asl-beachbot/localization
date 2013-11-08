@@ -2,20 +2,24 @@
 #include <localization/scan_point.h>
 #include <localization/xy_point.h>
 
-
-
-
-
 class Pole {
  public:
 	Pole();
-	void update(const localization::scan_point scan_point);
+	Pole(const localization::xy_point &xy_coords);
+	Pole(const localization::xy_point &xy_coords, const localization::scan_point &laser_coords, const ros::Time &t, const unsigned int &i);
+	void update(const localization::scan_point &laser_coords);
+	void update(const ros::Time &t);
+	void update(const localization::scan_point &laser_coords, const ros::Time &t);
+	localization::xy_point xy_coords();
+	localization::scan_point laser_coord();
+	ros::Time time();
+	unsigned int i();
 
  private:
-	localization::xy_point xy_coords_;
-	localization::scan_point laser_coords_;
-	ros::Time time_;
-	unsigned int i_;
+	localization::xy_point xy_coords_;		//xy coordinates of the pole
+	localization::scan_point laser_coords_;		//last known laser scan data of pole
+	ros::Time time_;		//time of last sighting
+	unsigned int i_;		//index of pole
 
 
 

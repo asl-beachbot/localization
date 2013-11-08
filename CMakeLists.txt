@@ -17,6 +17,10 @@ add_executable(locate src/locate.cpp)
 target_link_libraries(locate ${catkin_LIBRARIES})
 add_dependencies(locate locate_gencpp)
 
+add_executable(fake_scan src/fake_scan.cpp)
+target_link_libraries(fake_scan ${catkin_LIBRARIES})
+add_dependencies(fake_scan fake_scan_gencpp)
+
 ## Declare a catkin package
 catkin_package()
 
