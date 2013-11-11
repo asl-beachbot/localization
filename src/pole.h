@@ -10,10 +10,10 @@ class Pole {
 	void update(const localization::scan_point &laser_coords);
 	void update(const ros::Time &t);
 	void update(const localization::scan_point &laser_coords, const ros::Time &t);
-	localization::xy_point xy_coords();
-	localization::scan_point laser_coord();
-	ros::Time time();
-	unsigned int i();
+	localization::xy_point xy_coords() const;
+	localization::scan_point laser_coords() const;
+	ros::Time time() const;
+	unsigned int i() const;
 
  private:
 	localization::xy_point xy_coords_;		//xy coordinates of the pole

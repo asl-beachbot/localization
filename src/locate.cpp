@@ -1,10 +1,12 @@
 #include <ros/ros.h>
 #include "std_msgs/String.h"
 #include "sensor_msgs/LaserScan.h"
+#include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PointStamped.h"
 #include "pole.cpp"
 #include "localization/scan_point.h"
+#include "tf/transform_datatypes.h"
 #include <cmath>
 
 const double kPi = 3.141592653589;
@@ -36,7 +38,7 @@ class Loc {
 		ros::Time begin = ros::Time::now();
 		std::vector<std::vector<localization::scan_point> > extracted_scan_points;
 		ROS_INFO("Gathering data...");
-		double init_duration = 5;
+		double init_duration = 2;
 		while ((ros::Time::now()-begin).sec < init_duration && ros::ok()) {	//gather data for 5 seconds
 			ros::Rate loop_rate(25);
 			ros::spinOnce();	//get one scan
@@ -75,7 +77,7 @@ class Loc {
 	}
 
 	void PublishPoles() {
-		ROS_INFO("Publishing poles...");
+		//ROS_INFO("Publishing poles...");
 		for (int i = 0; i < poles_.size(); i++) {
 			geometry_msgs::PointStamped point;
 			point.header.seq = 1;
@@ -86,10 +88,14 @@ class Loc {
 			point.point.z = 0;
 			pub_pole_.publish(point);
 		}
-		ROS_INFO("Success!");
+		//ROS_INFO("Success!");
 	}
 
-	void PublishPose();
+	void PublishPose() {
+		//ROS_INFO("Publishing pose...");
+		pub_pose_.publish(pose_);
+		//ROS_INFO("Success!");
+	}
 
 	std::vector<localization::xy_point> ScanToXY(const std::vector<localization::scan_point> scan) {
 		std::vector<localization::xy_point> xy_vector;
@@ -117,22 +123,125 @@ class Loc {
 	}
 
 	bool BelongTogether(const localization::scan_point &point1, const localization::scan_point &point2) {
-		if (abs(point1.distance - point2.distance) < 1 && abs(point1.angle - point2.angle)*point1.distance < 1) return true;
+		double rad_dist = abs(point1.distance - point2.distance);
+		double tang_dist = abs(point1.angle - point2.angle)*point1.distance;
+		//ROS_INFO("rad distance %f tang dist %f", rad_dist, tang_dist);
+		if (rad_dist < 1.0 && tang_dist < 1.0) return true;
 		else return false;
 	}
 
 	void Locate() {
-
+		ros::Rate loop_rate(25);
+		ros::spinOnce();
+		std::vector<localization::scan_point> locate_scans;
+		ExtractPoleScans(&locate_scans);	//get relevant scan points
+		UpdatePoles(locate_scans);		//assign scans to respective poles
+		PublishPoles();
+		PublishPose();
+		loop_rate.sleep();
 	}
 
-	void StateHandler() {
-		if (initiation_) {
-			ROS_INFO("started initiation");
-			while (initiation_ && ros::ok()) InitiatePoles();
+	void UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort) {
+		ros::Time current_time = ros::Time::now();
+		//assign poles
+		for (int i = 0; i < poles_.size(); i++) {
+			for (int j = 0; j < scans_to_sort.size(); j++) {
+				bool check = BelongTogether( poles_[i].laser_coords(), scans_to_sort[j]);
+				if (check) poles_[i].update(scans_to_sort[j], current_time);
+				//if (check) ROS_INFO("totally works");
+				if (check) break;
+				//ROS_INFO("Didn't find matching pole for %f m %f rad", scans_to_sort[j].distance, scans_to_sort[j].angle);
+			}
 		}
-		if (!initiation_) {
+		GetPose(current_time);
+	}
+
+	void GetPose(const ros::Time &current_time) {
+		std::vector<geometry_msgs::Pose> pose_vector;
+		for (int i = 0; i < poles_.size(); i++) {		//loop over poles
+			if (i != poles_.size()-1) i++;	//compare a pair and move to next if possible
+			calcPose(poles_[i-1], poles_[i], &pose_vector);
+		}
+		double x, y, theta;
+		for (int i = 0; i < pose_vector.size(); i++) {	//average over all results
+			x += pose_vector[i].position.x;
+			y += pose_vector[i].position.y;
+			theta += tf::getYaw(pose_vector[i].orientation);
+		}
+		x /= pose_vector.size();
+		y /= pose_vector.size();
+		theta /= pose_vector.size();
+		pose_.pose.position.x = x;
+		pose_.pose.position.y = y;
+		pose_.pose.position.z = 0;
+		pose_.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+		pose_.header.seq = 1;
+		pose_.header.stamp = ros::Time::now();
+		pose_.header.frame_id = "fixed_frame";
+		PrintPose();
+	}
+
+	void PrintPose() {
+		ROS_INFO("Pose [%f %f] %f rad\n", pose_.pose.position.x, pose_.pose.position.y, tf::getYaw(pose_.pose.orientation));
+	}
+
+	void correctAngle(double& angle) {
+    while(angle > kPi) angle -= 2*kPi;
+    while(angle < -kPi) angle += 2*kPi;
+  }
+
+  void calcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector) {
+    //pole coordinates
+    double xp1 = pole1.xy_coords().x;
+    double yp1 = pole1.xy_coords().y;
+    double xp2 = pole2.xy_coords().x;
+    double yp2 = pole2.xy_coords().y;
+
+    //scan coordinates
+    double a_dist = pole1.laser_coords().distance;
+    double a_ang = pole1.laser_coords().angle;
+    double b_dist = pole2.laser_coords().distance;
+    double b_ang = pole2.laser_coords().angle;
+    
+    //calculate possible points
+    const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
+    const double delta = 1.0/4*pow((D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist),0.5);
+    double x1 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
+    double x2 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(yp1-yp2)/(D*D)*delta;
+    double y1 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
+    double y2 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
+    
+    //correct bot orientation for possible points
+    double theta1 = kPi - a_ang + atan2(y1-yp1,x1-xp1);
+    double theta2 = kPi - a_ang + atan2(y2-yp1,x2-xp1);
+    //check which pose is the correct one
+    bool first = (kPi + atan2(y1-yp2,x1-xp2)-theta1-b_ang < 0.1);    //0.1 is possibly unreliable; needed for testing, should be adjusted
+    bool second = (kPi + atan2(y1-yp2,x1-xp2)-theta2-b_ang < 0.1);
+    assert(first || second);
+    
+    //input correct pose
+    geometry_msgs::Pose temp_pose;
+    temp_pose.position.z = 0;
+    correctAngle(theta1);
+    correctAngle(theta2);
+    if (first) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;}
+    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;}
+
+    //print pose 
+    ROS_INFO("[%f %f] %f rad", temp_pose.position.x, temp_pose.position.y, tf::getYaw(temp_pose.orientation));
+    pose_vector->push_back(temp_pose);
+  }
+
+	void StateHandler() {
+		while (ros::ok()) {
+			if (initiation_) {
+				ROS_INFO("started initiation");
+				while (initiation_ && ros::ok()) InitiatePoles();
+			}
 			ROS_INFO("started localization");
-			while (!initiation_ && ros::ok()) Locate();
+			if (!initiation_) {
+				while (!initiation_ && ros::ok()) Locate();
+			}
 		}
 	}
 

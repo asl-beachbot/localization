@@ -7,18 +7,23 @@ Pole::Pole(const localization::xy_point &xy_coords, const localization::scan_poi
 	i_ = i;
 }
 
-localization::xy_point Pole::xy_coords() {
-	return xy_coords_;
+void Pole::update(const localization::scan_point &laser_coords, const ros::Time &t) {
+	time_ = t;
+	laser_coords_ = laser_coords;
+}
+
+localization::xy_point Pole::xy_coords() const {
+	return 	xy_coords_;
 }
 	
-localization::scan_point Pole::laser_coord() {
+localization::scan_point Pole::laser_coords() const {
 	return laser_coords_;
 }
 
-ros::Time Pole::time() {
+ros::Time Pole::time() const {
 	return time_;
 }
 
-unsigned int Pole::i() {
+unsigned int Pole::i() const {
 	return i_;
 }
