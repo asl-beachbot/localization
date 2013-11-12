@@ -34,6 +34,11 @@ class Loc {
 	geometry_msgs::PoseStamped pose_;
 	bool initiation_;
 
+	void CorrectAngle(double& angle) {
+    while(angle > kPi) angle -= 2*kPi;
+    while(angle < -kPi) angle += 2*kPi;
+ }
+
 	void InitiatePoles() {
 		ros::Time begin = ros::Time::now();
 		std::vector<std::vector<localization::scan_point> > extracted_scan_points;
@@ -124,7 +129,9 @@ class Loc {
 
 	bool BelongTogether(const localization::scan_point &point1, const localization::scan_point &point2) {
 		double rad_dist = abs(point1.distance - point2.distance);
-		double tang_dist = abs(point1.angle - point2.angle)*point1.distance;
+		double ang_delta = point1.angle - point2.angle;
+		CorrectAngle(ang_delta);
+		double tang_dist = abs(ang_delta)*point1.distance;
 		//ROS_INFO("rad distance %f tang dist %f", rad_dist, tang_dist);
 		if (rad_dist < 1.0 && tang_dist < 1.0) return true;
 		else return false;
@@ -150,22 +157,35 @@ class Loc {
 				if (check) poles_[i].update(scans_to_sort[j], current_time);
 				//if (check) ROS_INFO("totally works");
 				if (check) break;
-				//ROS_INFO("Didn't find matching pole for %f m %f rad", scans_to_sort[j].distance, scans_to_sort[j].angle);
+				if (j == scans_to_sort.size() -1) {
+					ROS_INFO("Didn't find matching scan for pole %d [%f %f]", i, poles_[i].xy_coords().x, poles_[i].xy_coords().y);
+					poles_[i].disappear();
+				}
 			}
 		}
+		/////DEBUG//////
+		//ROS_INFO("Current time %d.%ds", current_time.sec, current_time.nsec);
+		//for (int i = 0; i < poles_.size(); i++) ROS_INFO("Pole %d %d.%ds", i, poles_[i].time().sec, poles_[i].time().nsec);
+		////////////////
 		GetPose(current_time);
 	}
 
 	void GetPose(const ros::Time &current_time) {
 		std::vector<geometry_msgs::Pose> pose_vector;
 		for (int i = 0; i < poles_.size(); i++) {		//loop over poles
-			if (i != poles_.size()-1) i++;	//compare a pair and move to next if possible
-			calcPose(poles_[i-1], poles_[i], &pose_vector);
+			if (!poles_[i].visible()) continue;
+			int j = i+1;
+			while (!poles_[j].visible() && j < poles_.size()) j++;
+			if (j > poles_.size()-1) break;
+			calcPose(poles_[i], poles_[j], &pose_vector);
+			i = j;
 		}
-		double x, y, theta;
+		double x = 0, y = 0, theta = 0;
+		//ROS_INFO("y: %f", y);
 		for (int i = 0; i < pose_vector.size(); i++) {	//average over all results
 			x += pose_vector[i].position.x;
 			y += pose_vector[i].position.y;
+			//ROS_INFO("y: %f", y);
 			theta += tf::getYaw(pose_vector[i].orientation);
 		}
 		x /= pose_vector.size();
@@ -182,7 +202,7 @@ class Loc {
 	}
 
 	void PrintPose() {
-		ROS_INFO("Pose [%f %f] %f rad\n", pose_.pose.position.x, pose_.pose.position.y, tf::getYaw(pose_.pose.orientation));
+		ROS_INFO("Averaged [%f %f] %f rad\n", pose_.pose.position.x, pose_.pose.position.y, tf::getYaw(pose_.pose.orientation));
 	}
 
 	void correctAngle(double& angle) {
@@ -215,8 +235,9 @@ class Loc {
     double theta1 = kPi - a_ang + atan2(y1-yp1,x1-xp1);
     double theta2 = kPi - a_ang + atan2(y2-yp1,x2-xp1);
     //check which pose is the correct one
-    bool first = (kPi + atan2(y1-yp2,x1-xp2)-theta1-b_ang < 0.1);    //0.1 is possibly unreliable; needed for testing, should be adjusted
-    bool second = (kPi + atan2(y1-yp2,x1-xp2)-theta2-b_ang < 0.1);
+    ///////////Bedingung ist kacke////////////////
+    bool first = (abs(kPi + atan2(y1-yp2,x1-xp2)-theta1-b_ang) < 1);    //0.1 is possibly unreliable; needed for testing, should be adjusted
+    bool second = (abs(kPi + atan2(y1-yp2,x1-xp2)-theta2-b_ang) < 1);
     assert(first || second);
     
     //input correct pose
@@ -228,7 +249,7 @@ class Loc {
     else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;}
 
     //print pose 
-    ROS_INFO("[%f %f] %f rad", temp_pose.position.x, temp_pose.position.y, tf::getYaw(temp_pose.orientation));
+    ROS_INFO("From poles %d,%d: [%f %f] %f rad", pole1.i(), pole2.i(), temp_pose.position.x, temp_pose.position.y, tf::getYaw(temp_pose.orientation));
     pose_vector->push_back(temp_pose);
   }
 

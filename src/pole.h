@@ -10,23 +10,17 @@ class Pole {
 	void update(const localization::scan_point &laser_coords);
 	void update(const ros::Time &t);
 	void update(const localization::scan_point &laser_coords, const ros::Time &t);
+	void disappear();
 	localization::xy_point xy_coords() const;
 	localization::scan_point laser_coords() const;
 	ros::Time time() const;
 	unsigned int i() const;
+	bool visible() const;
 
  private:
 	localization::xy_point xy_coords_;		//xy coordinates of the pole
 	localization::scan_point laser_coords_;		//last known laser scan data of pole
 	ros::Time time_;		//time of last sighting
 	unsigned int i_;		//index of pole
-
-
-
-
- 
-
-
-
-
+	bool visible_;
 };

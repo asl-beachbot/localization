@@ -5,11 +5,17 @@ Pole::Pole(const localization::xy_point &xy_coords, const localization::scan_poi
 	laser_coords_ = laser_coords;
 	time_ = t;
 	i_ = i;
+	visible_ = true;
 }
 
 void Pole::update(const localization::scan_point &laser_coords, const ros::Time &t) {
 	time_ = t;
 	laser_coords_ = laser_coords;
+	visible_ = true;
+}
+
+void Pole::disappear() {
+	visible_ = false;
 }
 
 localization::xy_point Pole::xy_coords() const {
@@ -26,4 +32,8 @@ ros::Time Pole::time() const {
 
 unsigned int Pole::i() const {
 	return i_;
+}
+
+bool Pole::visible() const {
+	return visible_;
 }
