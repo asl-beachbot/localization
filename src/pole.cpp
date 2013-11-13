@@ -14,6 +14,10 @@ void Pole::update(const localization::scan_point &laser_coords, const ros::Time 
 	visible_ = true;
 }
 
+void Pole::update(const localization::scan_point &laser_coords) {
+	laser_coords_ = laser_coords;
+}
+
 void Pole::disappear() {
 	visible_ = false;
 }

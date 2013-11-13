@@ -20,6 +20,7 @@ class Loc {
 		pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
 		pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
 		initiation_ = true;
+		pose_.pose.position.x = -2000;
 		StateHandler();
 	}
 
@@ -127,16 +128,6 @@ class Loc {
 		return xy_vector;
 	}
 
-	bool BelongTogether(const localization::scan_point &point1, const localization::scan_point &point2) {
-		double rad_dist = abs(point1.distance - point2.distance);
-		double ang_delta = point1.angle - point2.angle;
-		CorrectAngle(ang_delta);
-		double tang_dist = abs(ang_delta)*point1.distance;
-		//ROS_INFO("rad distance %f tang dist %f", rad_dist, tang_dist);
-		if (rad_dist < 1.0 && tang_dist < 1.0) return true;
-		else return false;
-	}
-
 	void Locate() {
 		ros::Rate loop_rate(25);
 		ros::spinOnce();
@@ -150,27 +141,31 @@ class Loc {
 
 	void UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort) {
 		ros::Time current_time = ros::Time::now();
-		//assign poles
-		for (int i = 0; i < poles_.size(); i++) {
-			for (int j = 0; j < scans_to_sort.size(); j++) {
-				bool check = BelongTogether( poles_[i].laser_coords(), scans_to_sort[j]);
-				if (check) poles_[i].update(scans_to_sort[j], current_time);
-				//if (check) ROS_INFO("totally works");
-				if (check) break;
-				if (j == scans_to_sort.size() -1) {
-					ROS_INFO("Didn't find matching scan for pole %d [%f %f]", i, poles_[i].xy_coords().x, poles_[i].xy_coords().y);
-					poles_[i].disappear();
+		for(int i = 0; i < scans_to_sort.size(); i++) {	//find closest pole for every scan
+			double min_dist = 2000000;
+			int index = -1;
+			for (int j = 0; j < poles_.size(); j++) {
+				localization::scan_point current_scan = poles_[j].laser_coords();
+				double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
+				+ pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
+				if (current_dist < min_dist) {
+					min_dist = current_dist;
+					index = j;
 				}
 			}
+			assert(index != -1);
+			poles_[index].update(scans_to_sort[i], current_time);
 		}
-		/////DEBUG//////
-		//ROS_INFO("Current time %d.%ds", current_time.sec, current_time.nsec);
-		//for (int i = 0; i < poles_.size(); i++) ROS_INFO("Pole %d %d.%ds", i, poles_[i].time().sec, poles_[i].time().nsec);
-		////////////////
-		GetPose(current_time);
+		for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
+			if (poles_[i].time() != current_time) poles_[i].disappear();
+		}
+		PrintPoleScanData();
+		GetPose();
+		EstimateIniviblePoles();
+		PrintPose();
 	}
 
-	void GetPose(const ros::Time &current_time) {
+	void GetPose() {
 		std::vector<geometry_msgs::Pose> pose_vector;
 		for (int i = 0; i < poles_.size(); i++) {		//loop over poles
 			if (!poles_[i].visible()) continue;
@@ -198,11 +193,32 @@ class Loc {
 		pose_.header.seq = 1;
 		pose_.header.stamp = ros::Time::now();
 		pose_.header.frame_id = "fixed_frame";
-		PrintPose();
+	}
+
+	void EstimateIniviblePoles() {
+		//ROS_INFO("Estimating poles");
+		for (int i = 0; i < poles_.size(); i++) {
+			if (!poles_[i].visible()) {
+				double dx = pose_.pose.position.x - poles_[i].xy_coords().x;
+				double dy = pose_.pose.position.y - poles_[i].xy_coords().y;
+				localization::scan_point temp_scan;
+				temp_scan.angle = atan2(dy,dx)+3.1415927-tf::getYaw(pose_.pose.orientation);
+				CorrectAngle(temp_scan.angle);
+				temp_scan.distance = pow(pow(dx,2)+pow(dy,2),0.5);
+				poles_[i].update(temp_scan);
+				//ROS_INFO("Changed pole %d to %f m %f rad", i, temp_scan.distance, temp_scan.angle);
+			}
+		}
+		//ROS_INFO("Done estimating");
 	}
 
 	void PrintPose() {
 		ROS_INFO("Averaged [%f %f] %f rad\n", pose_.pose.position.x, pose_.pose.position.y, tf::getYaw(pose_.pose.orientation));
+	}
+
+	void PrintPoleScanData() {
+		for (int i = 0; i < poles_.size(); i++) 
+			ROS_INFO("found pole%d at %f m %f rad", i, poles_[i].laser_coords().distance, poles_[i].laser_coords().angle);
 	}
 
 	void correctAngle(double& angle) {
@@ -222,10 +238,18 @@ class Loc {
     double a_ang = pole1.laser_coords().angle;
     double b_dist = pole2.laser_coords().distance;
     double b_ang = pole2.laser_coords().angle;
+
     
     //calculate possible points
     const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
-    const double delta = 1.0/4*pow((D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist),0.5);
+    double to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);	//to check if circles have intersection
+    while (to_root < 0) {		//if no intersection slowly widen circles
+    	a_dist += 0.001;
+    	b_dist += 0.001;
+    	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
+    	ROS_INFO("corrected");
+    }
+    const double delta = 1.0/4*pow(to_root,0.5);
     double x1 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
     double x2 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(yp1-yp2)/(D*D)*delta;
     double y1 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
@@ -234,19 +258,34 @@ class Loc {
     //correct bot orientation for possible points
     double theta1 = kPi - a_ang + atan2(y1-yp1,x1-xp1);
     double theta2 = kPi - a_ang + atan2(y2-yp1,x2-xp1);
-    //check which pose is the correct one
-    ///////////Bedingung ist kacke////////////////
-    bool first = (abs(kPi + atan2(y1-yp2,x1-xp2)-theta1-b_ang) < 1);    //0.1 is possibly unreliable; needed for testing, should be adjusted
-    bool second = (abs(kPi + atan2(y1-yp2,x1-xp2)-theta2-b_ang) < 1);
-    assert(first || second);
-    
-    //input correct pose
+    ROS_INFO("P1 [%f %f] %f", x1, y1, theta1);
+    ROS_INFO("P2 [%f %f] %f", x2, y2, theta2);
     geometry_msgs::Pose temp_pose;
     temp_pose.position.z = 0;
-    correctAngle(theta1);
-    correctAngle(theta2);
-    if (first) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;}
-    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;}
+    
+	  if (pose_.pose.position.x == -2000) {	//if first step use potentially unreliable method
+	    //check which pose is the correct one
+	    bool first = (kPi + atan2(y1-yp2,x1-xp2)-theta1-b_ang < 0.1);
+	    bool second = (kPi + atan2(y1-yp2,x1-xp2)-theta2-b_ang < 0.1);
+	    assert(first || second);
+		  correctAngle(theta1);
+		  correctAngle(theta2);
+	    //input correct pose
+	    if (first) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;}
+	    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;}
+    }
+    else {	//if previous position known use closest new one
+    	double dist1 = (pow(pose_.pose.position.x - x1,2) + pow(pose_.pose.position.y - y1,2));
+    	double dist2 = (pow(pose_.pose.position.x - x2,2) + pow(pose_.pose.position.y - y2,2));
+    	correctAngle(theta1);
+	    correctAngle(theta2);
+    	if (dist1 <= dist2) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;
+    		//ROS_INFO("chose 1");
+    	}
+	    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;
+	    	//ROS_INFO("chose 2");
+	    }	
+    }
 
     //print pose 
     ROS_INFO("From poles %d,%d: [%f %f] %f rad", pole1.i(), pole2.i(), temp_pose.position.x, temp_pose.position.y, tf::getYaw(temp_pose.orientation));
