@@ -239,31 +239,31 @@ class Loc {
     double b_dist = pole2.laser_coords().distance;
     double b_ang = pole2.laser_coords().angle;
 
-    
-    //calculate possible points
-    const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
-    double to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);	//to check if circles have intersection
-    while (to_root < 0) {		//if no intersection slowly widen circles
-    	a_dist += 0.001;
-    	b_dist += 0.001;
-    	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
-    	ROS_INFO("corrected");
-    }
-    const double delta = 1.0/4*pow(to_root,0.5);
-    double x1 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
-    double x2 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(yp1-yp2)/(D*D)*delta;
-    double y1 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
-    double y2 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
-    
-    //correct bot orientation for possible points
-    double theta1 = kPi - a_ang + atan2(y1-yp1,x1-xp1);
-    double theta2 = kPi - a_ang + atan2(y2-yp1,x2-xp1);
-    ROS_INFO("P1 [%f %f] %f", x1, y1, theta1);
-    ROS_INFO("P2 [%f %f] %f", x2, y2, theta2);
     geometry_msgs::Pose temp_pose;
     temp_pose.position.z = 0;
-    
+
 	  if (pose_.pose.position.x == -2000) {	//if first step use potentially unreliable method
+	    //calculate possible points
+	    const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
+	    double to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);	//to check if circles have intersection
+	    while (to_root < 0) {		//if no intersection slowly widen circles
+	    	a_dist += 0.001;
+	    	b_dist += 0.001;
+	    	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
+	    	ROS_INFO("corrected");
+	    }
+	    const double delta = 1.0/4*pow(to_root,0.5);
+	    double x1 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
+	    double x2 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(yp1-yp2)/(D*D)*delta;
+	    double y1 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
+	    double y2 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
+	    
+	    //correct bot orientation for possible points
+	    double theta1 = kPi - a_ang + atan2(y1-yp1,x1-xp1);
+	    double theta2 = kPi - a_ang + atan2(y2-yp1,x2-xp1);
+	    ROS_INFO("P1 [%f %f] %f", x1, y1, theta1);
+	    ROS_INFO("P2 [%f %f] %f", x2, y2, theta2);
+    
 	    //check which pose is the correct one
 	    bool first = (kPi + atan2(y1-yp2,x1-xp2)-theta1-b_ang < 0.1);
 	    bool second = (kPi + atan2(y1-yp2,x1-xp2)-theta2-b_ang < 0.1);
@@ -274,17 +274,25 @@ class Loc {
 	    if (first) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;}
 	    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;}
     }
-    else {	//if previous position known use closest new one
-    	double dist1 = (pow(pose_.pose.position.x - x1,2) + pow(pose_.pose.position.y - y1,2));
-    	double dist2 = (pow(pose_.pose.position.x - x2,2) + pow(pose_.pose.position.y - y2,2));
-    	correctAngle(theta1);
-	    correctAngle(theta2);
-    	if (dist1 <= dist2) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;
-    		//ROS_INFO("chose 1");
+    else {	//use Newton Method
+    	double theta_old = -2000;
+    	double theta = tf::getYaw(pose_.pose.orientation);
+    	while(abs(theta - theta_old) > 0.001) {
+    		theta_old = theta;
+    		double f_x = a_dist*cos(a_ang + theta_old -kPi) +xp1 -b_dist*cos(b_ang + theta_old - kPi) -xp2;
+    		double f_x_prime = -a_dist*sin(a_ang + theta_old -kPi) + b_dist*sin(b_ang + theta_old - kPi);
+    		theta = theta_old - (f_x/f_x_prime);
+    		ROS_INFO("Newton iteration");
     	}
-	    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;
-	    	//ROS_INFO("chose 2");
-	    }	
+    	double alpha1 = a_ang +theta -kPi;
+    	double alpha2 = b_ang +theta -kPi;
+    	double x1 = a_dist*cos(alpha1)+xp1;
+    	double x2 = b_dist*cos(alpha2)+xp2;
+    	double y1 = a_dist*sin(alpha1)+yp1;
+    	double y2 = b_dist*sin(alpha2)+yp2;
+    	temp_pose.position.x = (x1+x2)/2;
+    	temp_pose.position.y = (y1+y2)/2;
+    	temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta);
     }
 
     //print pose 
