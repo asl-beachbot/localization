@@ -50,8 +50,8 @@ class FakeScan {
 		double angle_increment_rad = 0.25/360*2*PI;
 		double angle_min = -3.0/4*PI;
 		double angle_max = 3.0/4*PI;
-		double error = 0.08;	//[m]
-		double randomizer = 0;
+		double error = 0.14;	//[m]
+		double randomizer = 1;
 
 		while(ros::ok()) {
 			ros::spinOnce();	//get velocity

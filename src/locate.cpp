@@ -242,57 +242,92 @@ class Loc {
     geometry_msgs::Pose temp_pose;
     temp_pose.position.z = 0;
 
-	  if (pose_.pose.position.x == -2000) {	//if first step use potentially unreliable method
-	    //calculate possible points
-	    const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
-	    double to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);	//to check if circles have intersection
-	    while (to_root < 0) {		//if no intersection slowly widen circles
-	    	a_dist += 0.001;
-	    	b_dist += 0.001;
-	    	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
-	    	ROS_INFO("corrected");
-	    }
-	    const double delta = 1.0/4*pow(to_root,0.5);
-	    double x1 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
-	    double x2 = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(yp1-yp2)/(D*D)*delta;
-	    double y1 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
-	    double y2 = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
-	    
-	    //correct bot orientation for possible points
-	    double theta1 = kPi - a_ang + atan2(y1-yp1,x1-xp1);
-	    double theta2 = kPi - a_ang + atan2(y2-yp1,x2-xp1);
-	    ROS_INFO("P1 [%f %f] %f", x1, y1, theta1);
-	    ROS_INFO("P2 [%f %f] %f", x2, y2, theta2);
-    
-	    //check which pose is the correct one
-	    bool first = (kPi + atan2(y1-yp2,x1-xp2)-theta1-b_ang < 0.1);
-	    bool second = (kPi + atan2(y1-yp2,x1-xp2)-theta2-b_ang < 0.1);
-	    assert(first || second);
-		  correctAngle(theta1);
-		  correctAngle(theta2);
-	    //input correct pose
-	    if (first) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;}
-	    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;}
+    //calculate possible points
+    const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
+    double to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);	//to check if circles have intersection
+    while (to_root < 0) {		//if no intersection slowly widen circles
+    	a_dist += 0.001;
+    	b_dist += 0.001;
+    	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
+    	ROS_INFO("corrected");
     }
-    else {	//use Newton Method
+    const double delta = 1.0/4*pow(to_root,0.5);
+    double x1_circle = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
+    double x2_circle = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(yp1-yp2)/(D*D)*delta;
+    double y1_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
+    double y2_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
+    
+    //correct bot orientation for possible points
+    double theta1_circle = kPi - a_ang + atan2(y1_circle-yp1,x1_circle-xp1);
+    double theta2_circle = kPi - a_ang + atan2(y2_circle-yp1,x2_circle-xp1);
+    ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
+    ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
+  
+    //check which pose is the correct one
+    bool first = (kPi + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 0.1);
+    bool second = (kPi + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 0.1);
+
+    /*assert(first || second);
+	  correctAngle(theta1);
+	  correctAngle(theta2);
+    //input correct pose
+    if (first) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;}
+    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;}*/
+    
+    if (pose_.pose.position.x != -2000) {	//use Newton Method
     	double theta_old = -2000;
     	double theta = tf::getYaw(pose_.pose.orientation);
     	while(abs(theta - theta_old) > 0.001) {
     		theta_old = theta;
+    		ROS_INFO("theta_old %f", theta_old);
     		double f_x = a_dist*cos(a_ang + theta_old -kPi) +xp1 -b_dist*cos(b_ang + theta_old - kPi) -xp2;
+    		//ROS_INFO("f_x %15.15f", f_x);
     		double f_x_prime = -a_dist*sin(a_ang + theta_old -kPi) + b_dist*sin(b_ang + theta_old - kPi);
+    		//ROS_INFO("f_x_prime %15.15f", f_x_prime);
     		theta = theta_old - (f_x/f_x_prime);
-    		ROS_INFO("Newton iteration");
+    		//ROS_INFO("Newton iteration");
     	}
     	double alpha1 = a_ang +theta -kPi;
     	double alpha2 = b_ang +theta -kPi;
-    	double x1 = a_dist*cos(alpha1)+xp1;
-    	double x2 = b_dist*cos(alpha2)+xp2;
-    	double y1 = a_dist*sin(alpha1)+yp1;
-    	double y2 = b_dist*sin(alpha2)+yp2;
-    	temp_pose.position.x = (x1+x2)/2;
-    	temp_pose.position.y = (y1+y2)/2;
-    	temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+    	double x1_newton = a_dist*cos(alpha1)+xp1;
+    	double x2_newton = b_dist*cos(alpha2)+xp2;
+    	double y1_newton = a_dist*sin(alpha1)+yp1;
+    	double y2_newton = b_dist*sin(alpha2)+yp2;
+    	double x_newton = (x1_newton+x2_newton)/2;
+    	double y_newton = (y1_newton+y2_newton)/2;
+    	double theta_newton = theta;
+    	ROS_INFO("P_N [%f %f] %f", x_newton, y_newton, theta_newton);
+    	double check_dist1 = abs(pow(x1_circle-x_newton,2)+pow(y1_circle-y_newton,2));
+    	double check_dist2 = abs(pow(x2_circle-x_newton,2)+pow(y2_circle-y_newton,2));
+    	if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
+    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
+    		temp_pose.position.x = x1_circle; 
+    		temp_pose.position.y = y1_circle;
+    	}
+    	else {
+    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2_circle); 
+    		temp_pose.position.x = x2_circle; 
+    		temp_pose.position.y = y2_circle;
+    	}
+    	/*temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta_newton); 
+    	temp_pose.position.x = x_newton; 
+    	temp_pose.position.y = y_newton;*/
+    }
+    else {	//no Newton if first time
+    	assert(first || second);
+	  	correctAngle(theta1_circle);
+	  	correctAngle(theta2_circle);
+    	//input correct pose
+    	if (first) {
+    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
+    		temp_pose.position.x = x1_circle; 
+    		temp_pose.position.y = y1_circle;
+    	}
+    	else {
+    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2_circle); 
+    		temp_pose.position.x = x2_circle; 
+    		temp_pose.position.y = y2_circle;
+    	}
     }
 
     //print pose 
