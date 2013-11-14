@@ -19,8 +19,8 @@ class Loc {
 		ROS_INFO("Subscribed to \"scan\" topic");
 		pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
 		pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
-		initiation_ = true;
-		pose_.pose.position.x = -2000;
+		initiation_ = true;	//start with initiation
+		pose_.pose.position.x = -2000;	//for recognition if first time calculating
 		StateHandler();
 	}
 
@@ -38,7 +38,20 @@ class Loc {
 	void CorrectAngle(double& angle) {
     while(angle > kPi) angle -= 2*kPi;
     while(angle < -kPi) angle += 2*kPi;
- }
+	}
+
+	void StateHandler() {	//runs either initiation or localization
+		while (ros::ok()) {
+			if (initiation_) {
+				ROS_INFO("started initiation");
+				while (initiation_ && ros::ok()) InitiatePoles();
+			}
+			ROS_INFO("started localization");
+			if (!initiation_) {
+				while (!initiation_ && ros::ok()) Locate();
+			}
+		}
+	}
 
 	void InitiatePoles() {
 		ros::Time begin = ros::Time::now();
@@ -159,7 +172,7 @@ class Loc {
 		for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 			if (poles_[i].time() != current_time) poles_[i].disappear();
 		}
-		PrintPoleScanData();
+		//PrintPoleScanData();
 		GetPose();
 		EstimateIniviblePoles();
 		PrintPose();
@@ -249,7 +262,7 @@ class Loc {
     	a_dist += 0.001;
     	b_dist += 0.001;
     	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
-    	ROS_INFO("corrected");
+    	//ROS_INFO("corrected");
     }
     const double delta = 1.0/4*pow(to_root,0.5);
     double x1_circle = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
@@ -257,29 +270,20 @@ class Loc {
     double y1_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
     double y2_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
     
-    //correct bot orientation for possible points
+    //bot orientation for possible points
     double theta1_circle = kPi - a_ang + atan2(y1_circle-yp1,x1_circle-xp1);
     double theta2_circle = kPi - a_ang + atan2(y2_circle-yp1,x2_circle-xp1);
-    ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
-    ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
+    //ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
+    //ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
   
-    //check which pose is the correct one
-    bool first = (kPi + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 0.1);
-    bool second = (kPi + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 0.1);
-
-    /*assert(first || second);
-	  correctAngle(theta1);
-	  correctAngle(theta2);
-    //input correct pose
-    if (first) {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1); temp_pose.position.x = x1; temp_pose.position.y = y1;}
-    else {temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2); temp_pose.position.x = x2; temp_pose.position.y = y2;}*/
     
+
     if (pose_.pose.position.x != -2000) {	//use Newton Method
     	double theta_old = -2000;
     	double theta = tf::getYaw(pose_.pose.orientation);
     	while(abs(theta - theta_old) > 0.001) {
     		theta_old = theta;
-    		ROS_INFO("theta_old %f", theta_old);
+    		//ROS_INFO("theta_old %f", theta_old);
     		double f_x = a_dist*cos(a_ang + theta_old -kPi) +xp1 -b_dist*cos(b_ang + theta_old - kPi) -xp2;
     		//ROS_INFO("f_x %15.15f", f_x);
     		double f_x_prime = -a_dist*sin(a_ang + theta_old -kPi) + b_dist*sin(b_ang + theta_old - kPi);
@@ -296,7 +300,7 @@ class Loc {
     	double x_newton = (x1_newton+x2_newton)/2;
     	double y_newton = (y1_newton+y2_newton)/2;
     	double theta_newton = theta;
-    	ROS_INFO("P_N [%f %f] %f", x_newton, y_newton, theta_newton);
+    	//ROS_INFO("P_N [%f %f] %f", x_newton, y_newton, theta_newton);
     	double check_dist1 = abs(pow(x1_circle-x_newton,2)+pow(y1_circle-y_newton,2));
     	double check_dist2 = abs(pow(x2_circle-x_newton,2)+pow(y2_circle-y_newton,2));
     	if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
@@ -314,10 +318,13 @@ class Loc {
     	temp_pose.position.y = y_newton;*/
     }
     else {	//no Newton if first time
+    	//check which pose is the correct one 
+    	bool first = (kPi + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 0.1);
+    	bool second = (kPi + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 0.1);
     	assert(first || second);
 	  	correctAngle(theta1_circle);
 	  	correctAngle(theta2_circle);
-    	//input correct pose
+    	//put in correct pose
     	if (first) {
     		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
     		temp_pose.position.x = x1_circle; 
@@ -335,18 +342,6 @@ class Loc {
     pose_vector->push_back(temp_pose);
   }
 
-	void StateHandler() {
-		while (ros::ok()) {
-			if (initiation_) {
-				ROS_INFO("started initiation");
-				while (initiation_ && ros::ok()) InitiatePoles();
-			}
-			ROS_INFO("started localization");
-			if (!initiation_) {
-				while (!initiation_ && ros::ok()) Locate();
-			}
-		}
-	}
 
 	void ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points) {
 		scan_pole_points->clear();	//clear old scan points

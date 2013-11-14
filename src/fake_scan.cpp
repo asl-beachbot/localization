@@ -7,7 +7,7 @@
 
 #define PI 3.141592653589
 
-void correctAngle(double& angle) {
+void correctAngle(double& angle) {	//keeps angle in [-PI, PI]
     while(angle > PI) angle -= 2*PI;
     while(angle < -PI) angle += 2*PI;
  }
@@ -36,7 +36,7 @@ class FakeScan {
 	ros::Publisher pub_ref_pose;
 	ros::Subscriber sub_vel;
 
-	void Callback(const geometry_msgs::Twist &vel) {
+	void Callback(const geometry_msgs::Twist &vel) {	//update velocity
 		v = vel.linear.x;
 		w = vel.angular.z;
 	}
@@ -51,7 +51,7 @@ class FakeScan {
 		double angle_min = -3.0/4*PI;
 		double angle_max = 3.0/4*PI;
 		double error = 0.14;	//[m]
-		double randomizer = 1;
+		double randomizer = 1;	//set to 0 for no noise, 1 for noise
 
 		while(ros::ok()) {
 			ros::spinOnce();	//get velocity
@@ -63,7 +63,7 @@ class FakeScan {
 				theta += w/2*1/25;
 			}
 			ROS_INFO("Input pose [%f %f] %f rad", x, y, theta);
-
+			//calculate angles for poles
 			double angle1 = atan2((y-yp1),(x-xp1))+3.1415927-theta;
 			double angle2 = atan2((y-yp2),(x-xp2))+3.1415927-theta;
 			double angle3 = atan2((y-yp3),(x-xp3))+3.1415927-theta;
@@ -86,10 +86,10 @@ class FakeScan {
 			scan.angle_max = angle_max;
 			scan.angle_increment = angle_increment_rad;
 
-			ROS_INFO("pushed pole0 at %f m %f rad", dist1, angle1);
-			ROS_INFO("pushed pole1 at %f m %f rad", dist2, angle2);
-			ROS_INFO("pushed pole2 at %f m %f rad", dist3, angle3);
-			ROS_INFO("pushed pole3 at %f m %f rad", dist4, angle4);
+			//ROS_INFO("pushed pole0 at %f m %f rad", dist1, angle1);
+			//ROS_INFO("pushed pole1 at %f m %f rad", dist2, angle2);
+			//ROS_INFO("pushed pole2 at %f m %f rad", dist3, angle3);
+			//ROS_INFO("pushed pole3 at %f m %f rad", dist4, angle4);
 
 			for (int i = 0; i < (angle_max-angle_min)/angle_increment_rad; i++) {
 				if(i == (int)((angle1-angle_min)/angle_increment_rad)) {
@@ -122,7 +122,6 @@ class FakeScan {
 					scan.intensities.push_back(1);
 				}
 			}
-			//ROS_INFO("scan has %lu entries", scan.ranges.size());
 			geometry_msgs::PoseStamped ref_pose;
 			ref_pose.pose.position.x = x;
 			ref_pose.pose.position.y = y;
@@ -144,8 +143,10 @@ class FakeScan {
 		pub_scan = n.advertise<sensor_msgs::LaserScan>("scan",1000);
 		pub_ref_pose = n.advertise<geometry_msgs::PoseStamped>("ref_pose",1000);
 		sub_vel = n.subscribe("velocity",1000, &FakeScan::Callback, this);
+ 		//starting pose (has to be set appropriately, please leave as is)
  		x=1.5;
  		y=2;
+ 		theta = 0;
  		GenerateScan();
  	}
 };
