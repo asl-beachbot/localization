@@ -7,6 +7,11 @@
 
 #define PI 3.141592653589
 
+struct PoleTilt {
+	double angle;
+	double direction;
+};
+
 void correctAngle(double& angle) {	//keeps angle in [-PI, PI]
     while(angle > PI) angle -= 2*PI;
     while(angle < -PI) angle += 2*PI;
@@ -30,6 +35,8 @@ class FakeScan {
 	//velocities
 	double v;
 	double w;
+	double max_pole_tilt;
+	const static double sensor_height = 0.5;
 
 	ros::NodeHandle n;
 	ros::Publisher pub_scan;
@@ -52,6 +59,25 @@ class FakeScan {
 		double angle_max = 3.0/4*PI;
 		double error = 0.14;	//[m]
 		double randomizer = 1;	//set to 0 for no noise, 1 for noise
+		std::vector<PoleTilt> pole_tilt;
+
+
+		for (int i = 0; i < 4; i++) {	//fill pole tilt vector
+			PoleTilt temp_tilt;
+			temp_tilt.angle = ((rand() % 100) / 100.0 *max_pole_tilt);	//angle between [0, max_pole_tilt]
+			//ROS_INFO("pole tilt: %f", temp_tilt.angle);
+			temp_tilt.direction = ((rand() % 100) / 100.0 *2*PI);	//direction in [0,2PI]
+			//ROS_INFO("pole direction: %f", temp_tilt.direction);
+			pole_tilt.push_back(temp_tilt);
+		}
+			double tilt_x_shift1 = pole_tilt[0].angle*sensor_height*sin(pole_tilt[0].direction);
+			double tilt_y_shift1 = pole_tilt[0].angle*sensor_height*cos(pole_tilt[0].direction);
+			double tilt_x_shift2 = pole_tilt[1].angle*sensor_height*cos(pole_tilt[1].direction);
+			double tilt_y_shift2 = pole_tilt[1].angle*sensor_height*sin(pole_tilt[1].direction);
+			double tilt_x_shift3 = pole_tilt[2].angle*sensor_height*cos(pole_tilt[2].direction);
+			double tilt_y_shift3 = pole_tilt[2].angle*sensor_height*sin(pole_tilt[2].direction);
+			double tilt_x_shift4 = pole_tilt[3].angle*sensor_height*cos(pole_tilt[3].direction);
+			double tilt_y_shift4 = pole_tilt[3].angle*sensor_height*sin(pole_tilt[3].direction);
 
 		while(ros::ok()) {
 			ros::spinOnce();	//get velocity
@@ -64,20 +90,20 @@ class FakeScan {
 			}
 			ROS_INFO("Input pose [%f %f] %f rad", x, y, theta);
 			//calculate angles for poles
-			double angle1 = atan2((y-yp1),(x-xp1))+3.1415927-theta;
-			double angle2 = atan2((y-yp2),(x-xp2))+3.1415927-theta;
-			double angle3 = atan2((y-yp3),(x-xp3))+3.1415927-theta;
-			double angle4 = atan2((y-yp4),(x-xp4))+3.1415927-theta;
+			double angle1 = atan2((y-(yp1+tilt_y_shift1)),(x-(xp1+tilt_x_shift1)))+3.1415927-theta;
+			double angle2 = atan2((y-(yp2+tilt_y_shift2)),(x-(xp2+tilt_x_shift2)))+3.1415927-theta;
+			double angle3 = atan2((y-(yp3+tilt_y_shift3)),(x-(xp3+tilt_x_shift3)))+3.1415927-theta;
+			double angle4 = atan2((y-(yp4+tilt_y_shift4)),(x-(xp4+tilt_x_shift4)))+3.1415927-theta;
 			correctAngle(angle1);
 			correctAngle(angle2);
 			correctAngle(angle3);
 			correctAngle(angle4);
 			//ROS_INFO("angle1 %f", angle1);
 			//ROS_INFO("angle2 %f", angle2);
-			double dist1 = pow(pow(x-xp1,2)+pow(y-yp1,2),0.5);
-			double dist2 = pow(pow(x-xp2,2)+pow(y-yp2,2),0.5);
-			double dist3 = pow(pow(x-xp3,2)+pow(y-yp3,2),0.5);
-			double dist4 = pow(pow(x-xp4,2)+pow(y-yp4,2),0.5);
+			double dist1 = pow(pow(x-(xp1+tilt_x_shift1),2)+pow(y-(yp1+tilt_y_shift1),2),0.5);
+			double dist2 = pow(pow(x-(xp2+tilt_x_shift2),2)+pow(y-(yp2+tilt_y_shift2),2),0.5);
+			double dist3 = pow(pow(x-(xp3+tilt_x_shift3),2)+pow(y-(yp3+tilt_y_shift3),2),0.5);
+			double dist4 = pow(pow(x-(xp4+tilt_x_shift4),2)+pow(y-(yp4+tilt_y_shift4),2),0.5);
 			sensor_msgs::LaserScan scan;
 			scan.header.seq = 1;
 			scan.header.stamp = ros::Time::now();
@@ -147,6 +173,7 @@ class FakeScan {
  		x=1.5;
  		y=2;
  		theta = 0;
+ 		max_pole_tilt = 1/360.0*2*PI;
  		GenerateScan();
  	}
 };
