@@ -9,8 +9,6 @@
 #include "tf/transform_datatypes.h"
 #include <cmath>
 
-const double kPi = 3.141592653589;
-
 class Loc {
  public:
 	Loc() {
@@ -35,9 +33,9 @@ class Loc {
 	geometry_msgs::PoseStamped pose_;
 	bool initiation_;
 
-	void CorrectAngle(double& angle) {
-    while(angle > kPi) angle -= 2*kPi;
-    while(angle < -kPi) angle += 2*kPi;
+	void NormalizeAngle(double& angle) {
+    while(angle > M_PI) angle -= 2*M_PI;
+    while(angle < -M_PI) angle += 2*M_PI;
 	}
 
 	void StateHandler() {	//runs either initiation or localization
@@ -216,7 +214,7 @@ class Loc {
 				double dy = pose_.pose.position.y - poles_[i].xy_coords().y;
 				localization::scan_point temp_scan;
 				temp_scan.angle = atan2(dy,dx)+3.1415927-tf::getYaw(pose_.pose.orientation);
-				CorrectAngle(temp_scan.angle);
+				NormalizeAngle(temp_scan.angle);
 				temp_scan.distance = pow(pow(dx,2)+pow(dy,2),0.5);
 				poles_[i].update(temp_scan);
 				//ROS_INFO("Changed pole %d to %f m %f rad", i, temp_scan.distance, temp_scan.angle);
@@ -233,11 +231,6 @@ class Loc {
 		for (int i = 0; i < poles_.size(); i++) 
 			ROS_INFO("found pole%d at %f m %f rad", i, poles_[i].laser_coords().distance, poles_[i].laser_coords().angle);
 	}
-
-	void correctAngle(double& angle) {
-    while(angle > kPi) angle -= 2*kPi;
-    while(angle < -kPi) angle += 2*kPi;
-  }
 
   void calcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector) {
     //pole coordinates
@@ -271,8 +264,8 @@ class Loc {
     double y2_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
     
     //bot orientation for possible points
-    double theta1_circle = kPi - a_ang + atan2(y1_circle-yp1,x1_circle-xp1);
-    double theta2_circle = kPi - a_ang + atan2(y2_circle-yp1,x2_circle-xp1);
+    double theta1_circle = M_PI - a_ang + atan2(y1_circle-yp1,x1_circle-xp1);
+    double theta2_circle = M_PI - a_ang + atan2(y2_circle-yp1,x2_circle-xp1);
     //ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
     //ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
   
@@ -284,15 +277,15 @@ class Loc {
     	while(abs(theta - theta_old) > 0.001) {
     		theta_old = theta;
     		//ROS_INFO("theta_old %f", theta_old);
-    		double f_x = a_dist*cos(a_ang + theta_old -kPi) +xp1 -b_dist*cos(b_ang + theta_old - kPi) -xp2;
+    		double f_x = a_dist*cos(a_ang + theta_old -M_PI) +xp1 -b_dist*cos(b_ang + theta_old - M_PI) -xp2;
     		//ROS_INFO("f_x %15.15f", f_x);
-    		double f_x_prime = -a_dist*sin(a_ang + theta_old -kPi) + b_dist*sin(b_ang + theta_old - kPi);
+    		double f_x_prime = -a_dist*sin(a_ang + theta_old -M_PI) + b_dist*sin(b_ang + theta_old - M_PI);
     		//ROS_INFO("f_x_prime %15.15f", f_x_prime);
     		theta = theta_old - (f_x/f_x_prime);
     		//ROS_INFO("Newton iteration");
     	}
-    	double alpha1 = a_ang +theta -kPi;
-    	double alpha2 = b_ang +theta -kPi;
+    	double alpha1 = a_ang +theta -M_PI;
+    	double alpha2 = b_ang +theta -M_PI;
     	double x1_newton = a_dist*cos(alpha1)+xp1;
     	double x2_newton = b_dist*cos(alpha2)+xp2;
     	double y1_newton = a_dist*sin(alpha1)+yp1;
@@ -319,11 +312,11 @@ class Loc {
     }
     else {	//no Newton if first time
     	//check which pose is the correct one 
-    	bool first = (kPi + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 0.1);
-    	bool second = (kPi + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 0.1);
+    	bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 0.1);
+    	bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 0.1);
     	assert(first || second);
-	  	correctAngle(theta1_circle);
-	  	correctAngle(theta2_circle);
+	  	NormalizeAngle(theta1_circle);
+	  	NormalizeAngle(theta2_circle);
     	//put in correct pose
     	if (first) {
     		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
@@ -359,33 +352,33 @@ class Loc {
 
 	void MinimizeScans(std::vector<localization::scan_point> *scan) {
 		std::vector<localization::scan_point> target; 
-		std::vector<int> trash;
+		std::vector<int> already_processed;
 		//don't run if no poles visible
 		if (!scan->empty()) {
 			//loop over all poles
 			for (int i = 0; i < scan->size(); i++) {
 				//don't run if pole is already done
-				if(std::find(trash.begin(), trash.end(), i) != trash.end());
+				if(std::find(already_processed.begin(), already_processed.end(), i) != already_processed.end());
 				else {
 					//loop over remaining poles
 					//check if point is last in vector
 					target.push_back(scan->at(i));
 					int ppp = 1;	//points per pole
 					if(i+1 != scan->size()) for (int j = i+1; j < scan->size(); j++) {
-						//check trash
-						if(std::find(trash.begin(), trash.end(), j) != trash.end());
+						//check already_processed
+						if(std::find(already_processed.begin(), already_processed.end(), j) != already_processed.end());
 						else {
 							//check if close enough
 							if (abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.2 
 								&& abs(scan->at(i).distance - scan->at(j).distance) < 0.2) {
 								ppp++;
-								trash.push_back(j);
+								already_processed.push_back(j);
 								target.back().angle += scan->at(j).angle;
 								target.back().distance += scan->at(j).distance;
 							}
 						}
 					}
-					trash.push_back(i);
+					already_processed.push_back(i);
 					//average
 					//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
 					target.back().distance /= ppp;

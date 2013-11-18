@@ -1,0 +1,10 @@
+<launch>
+
+	<group ns="localization">
+		<node pkg="localization" name="fake_scan" type="fake_scan" output="screen"/>
+		<node pkg="localization" name="locate" type="locate" output="screen"/>
+		<node pkg="localization" name="error_checker" type="error_checker" output="screen"/>
+	</group>
+
+
+</launch>
