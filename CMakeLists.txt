@@ -25,6 +25,10 @@ add_executable(error_checker src/error_checker.cpp)
 target_link_libraries(error_checker ${catkin_LIBRARIES})
 add_dependencies(error_checker error_checker_gencpp)
 
+add_executable(intensity_test src/intensity_test.cpp)
+target_link_libraries(intensity_test ${catkin_LIBRARIES})
+add_dependencies(intensity_test intensity_test_gencpp)
+
 ## Declare a catkin package
 catkin_package()
 

@@ -171,7 +171,7 @@ class FakeScan {
 
  public:
  	FakeScan() {
-		pub_scan = n.advertise<sensor_msgs::LaserScan>("scan",1000);
+		pub_scan = n.advertise<sensor_msgs::LaserScan>("/scan",1000);
 		pub_ref_pose = n.advertise<geometry_msgs::PoseStamped>("ref_pose",1000);
 		sub_vel = n.subscribe("velocity",1000, &FakeScan::Callback, this);
  		//starting pose (has to be set appropriately, please leave as is)

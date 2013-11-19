@@ -1,0 +1,8 @@
+<launch>
+
+	<group ns="localization">
+		<node pkg="localization" name="locate" type="locate" output="screen"/>
+	</group>
+
+
+</launch>

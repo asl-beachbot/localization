@@ -13,7 +13,7 @@ class Loc {
  public:
 	Loc() {
 		ROS_INFO("Started localization node");
-		sub_ = n_.subscribe("scan",1000, &Loc::Callback, this);
+		sub_ = n_.subscribe("/scan",1000, &Loc::Callback, this);
 		ROS_INFO("Subscribed to \"scan\" topic");
 		pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
 		pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
@@ -67,10 +67,10 @@ class Loc {
 		ROS_INFO("Gathered %lu/%d scans", extracted_scan_points.size(), (int)(25*init_duration));
 		if (extracted_scan_points.size() < 25) {		//check if enough data was gathered
 			extracted_scan_points.clear();	//discard data
-			ROS_WARN("Gathering data failed during initiation!");
+			ROS_WARN("Not enough scans gathered!");
 		}
 		else {
-			ROS_INFO("Success!");
+			ROS_INFO("Gathered enough scans!");
 			std::vector<localization::scan_point> averaged_scan_points;
 			for (int i = 0; i < extracted_scan_points.size(); i++) {	//combine all vectors of different measurements to one vector
 				for (int j = 0; j < extracted_scan_points[i].size(); j++) {
@@ -83,13 +83,16 @@ class Loc {
 				//if (i == 0) ROS_INFO("error %f m",averaged_scan_points[i].distance-6.666667);		//check distance errors
 				//if (i == 1) ROS_INFO("error %f m",averaged_scan_points[i].distance-8.91667);
 			}
-			std::vector<localization::xy_point> xy_poles = ScanToXY(averaged_scan_points);
-			for (int i = 0; i < xy_poles.size(); i++) ROS_INFO("pole (kart.) at [%f %f]", xy_poles[i].x, xy_poles[i].y);	//print poles for debugging
-			for (int i = 0; i < averaged_scan_points.size(); i++) {	//fill pole vector
-				poles_.push_back(Pole(xy_poles[i], averaged_scan_points[i], ros::Time::now(), i));
+			if (averaged_scan_points.size() > 1) {
+				std::vector<localization::xy_point> xy_poles = ScanToXY(averaged_scan_points);
+				for (int i = 0; i < xy_poles.size(); i++) ROS_INFO("pole (kart.) at [%f %f]", xy_poles[i].x, xy_poles[i].y);	//print poles for debugging
+				for (int i = 0; i < averaged_scan_points.size(); i++) {	//fill pole vector
+					poles_.push_back(Pole(xy_poles[i], averaged_scan_points[i], ros::Time::now(), i));
+				}
+				PublishPoles();
+				initiation_ = false;
 			}
-			PublishPoles();
-			initiation_ = false;
+			else ROS_WARN("Only found %lu poles. At least 2 needed.", averaged_scan_points.size());
 		}
 	}
 
@@ -144,7 +147,8 @@ class Loc {
 		ros::spinOnce();
 		std::vector<localization::scan_point> locate_scans;
 		ExtractPoleScans(&locate_scans);	//get relevant scan points
-		UpdatePoles(locate_scans);		//assign scans to respective poles
+		if (locate_scans.size() > 1) UpdatePoles(locate_scans);		//assign scans to respective poles
+		else ROS_WARN("Only seeing %lu poles. At least 2 needed.", locate_scans.size());
 		PublishPoles();
 		PublishPose();
 		loop_rate.sleep();
@@ -170,7 +174,7 @@ class Loc {
 		for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 			if (poles_[i].time() != current_time) poles_[i].disappear();
 		}
-		//PrintPoleScanData();
+		PrintPoleScanData();
 		GetPose();
 		EstimateIniviblePoles();
 		PrintPose();
@@ -344,6 +348,7 @@ class Loc {
 				localization::scan_point temp;
 				temp.distance = scan_.ranges[i];
 				temp.angle = (scan_.angle_min+scan_.angle_increment*i);
+				//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
 				scan_pole_points->push_back(temp);
 			}
 		}
@@ -392,6 +397,8 @@ class Loc {
 
 	void Callback(const sensor_msgs::LaserScan &scan) {
 		scan_ = scan;
+		//ROS_INFO("scan %d", scan.header.seq);
+		//ROS_INFO("scan_ %d", scan_.header.seq);
 	}
 
 };

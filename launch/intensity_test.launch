@@ -1,0 +1,8 @@
+<launch>
+
+	<group ns="localization">
+		<node pkg="localization" name="intensity_test" type="intensity_test" output="screen"/>
+	</group>
+
+
+</launch>
