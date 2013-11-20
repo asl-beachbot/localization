@@ -270,13 +270,15 @@ class Loc {
     //bot orientation for possible points
     double theta1_circle = M_PI - a_ang + atan2(y1_circle-yp1,x1_circle-xp1);
     double theta2_circle = M_PI - a_ang + atan2(y2_circle-yp1,x2_circle-xp1);
-    //ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
-    //ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
+    //NormalizeAngle(theta1_circle);
+    //NormalizeAngle(theta2_circle);
+    ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
+    ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
   
     
 
     if (pose_.pose.position.x != -2000) {	//use Newton Method
-    	double theta_old = -2000;
+    	/*double theta_old = -2000;
     	double theta = tf::getYaw(pose_.pose.orientation);
     	while(abs(theta - theta_old) > 0.001) {
     		theta_old = theta;
@@ -288,6 +290,7 @@ class Loc {
     		theta = theta_old - (f_x/f_x_prime);
     		//ROS_INFO("Newton iteration");
     	}
+    	ROS_INFO("theta newton: %f", theta);
     	double alpha1 = a_ang +theta -M_PI;
     	double alpha2 = b_ang +theta -M_PI;
     	double x1_newton = a_dist*cos(alpha1)+xp1;
@@ -297,7 +300,8 @@ class Loc {
     	double x_newton = (x1_newton+x2_newton)/2;
     	double y_newton = (y1_newton+y2_newton)/2;
     	double theta_newton = theta;
-    	//ROS_INFO("P_N [%f %f] %f", x_newton, y_newton, theta_newton);
+    	NormalizeAngle(theta);
+    	ROS_INFO("P_N [%f %f] %f", x_newton, y_newton, theta_newton);
     	double check_dist1 = abs(pow(x1_circle-x_newton,2)+pow(y1_circle-y_newton,2));
     	double check_dist2 = abs(pow(x2_circle-x_newton,2)+pow(y2_circle-y_newton,2));
     	if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
@@ -313,6 +317,26 @@ class Loc {
     	/*temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta_newton); 
     	temp_pose.position.x = x_newton; 
     	temp_pose.position.y = y_newton;*/
+    	const double a_ang_predicted = atan2(pose_.pose.position.y - yp1, pose_.pose.position.x - xp1);
+    	const double b_ang_predicted = atan2(pose_.pose.position.y - yp2, pose_.pose.position.x - xp2);
+    	const double x_predicted1 = a_dist * cos (a_ang_predicted);
+    	const double y_predicted1 = a_dist * sin (a_ang_predicted);
+    	const double x_predicted2 = b_dist * cos (b_ang_predicted);
+    	const double y_predicted2 = b_dist * sin (b_ang_predicted);
+    	ROS_INFO("P1P [%f %f]", x_predicted1, y_predicted1);
+    	ROS_INFO("P2P [%f %f]", x_predicted2, y_predicted2);
+    	double check_dist1 = abs(pow(x1_circle-x_predicted1,2)+pow(y1_circle-y_predicted1,2));
+    	double check_dist2 = abs(pow(x2_circle-x_predicted1,2)+pow(y2_circle-y_predicted1,2));
+    	if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
+    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
+    		temp_pose.position.x = x1_circle; 
+    		temp_pose.position.y = y1_circle;
+    	}
+    	else {
+    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2_circle); 
+    		temp_pose.position.x = x2_circle; 
+    		temp_pose.position.y = y2_circle;
+    	}
     }
     else {	//no Newton if first time
     	//check which pose is the correct one 
@@ -339,12 +363,22 @@ class Loc {
     pose_vector->push_back(temp_pose);
   }
 
+  bool IsPolePoint(const double &intensity, const double &distance) {
+  	double comparison_intensity = -1;
+  	if (distance < 0.5) return false;
+  	if (distance >= 0.5 && distance < 1) comparison_intensity = (1850-1050)/(1-0.326)*(distance-0.326)+1050;
+  	if (distance >= 1 && distance < 3.627) comparison_intensity = (1475-1850)/(3.627-1)*(distance-1)+1850;
+  	if (distance >= 3.627 && distance <= 8) comparison_intensity = (1275-1475)/(5.597-3.627)*(distance-3.627)+1475;
+  	if (distance > 8) comparison_intensity = 1900;	//mostly in because of fake_scan
+  	if (intensity > comparison_intensity) return true;
+  	else return false;
+  }
 
 	void ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points) {
 		scan_pole_points->clear();	//clear old scan points
 		for (int i = 0; i < scan_.intensities.size(); i++) {
 			//TODO: some kind of clever function for intensities
-			if (scan_.intensities[i] > 1000) {
+			if (IsPolePoint(scan_.intensities[i], scan_.ranges[i])) {
 				localization::scan_point temp;
 				temp.distance = scan_.ranges[i];
 				temp.angle = (scan_.angle_min+scan_.angle_increment*i);
@@ -374,8 +408,8 @@ class Loc {
 						if(std::find(already_processed.begin(), already_processed.end(), j) != already_processed.end());
 						else {
 							//check if close enough
-							if (abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.2 
-								&& abs(scan->at(i).distance - scan->at(j).distance) < 0.2) {
+							if (abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 1
+								&& abs(scan->at(i).distance - scan->at(j).distance) < 1) {
 								ppp++;
 								already_processed.push_back(j);
 								target.back().angle += scan->at(j).angle;

@@ -38,6 +38,7 @@ class IntensityTest {
 	sensor_msgs::LaserScan scan_;
 	std::string file_path_;
 	std::vector<IntensityStruct> intensity_vector_;
+	const static bool filter_max_intensites_ = true;
 
 	void TestIntensities() {
 		ROS_INFO("Starting intensity test");
@@ -60,21 +61,33 @@ class IntensityTest {
 					delete this;
 				}
 				//else ROS_INFO("Success!");
-				IntensityStruct temp_intensity;
-				double max_intensity = 0;
-				int max_index = -1;
-				for (int i = 0; i < scan_.intensities.size(); i++) {	//find maximum intensity
-					//ROS_INFO("%d", i);
-					if (scan_.intensities[i] > max_intensity) {
-						max_intensity = scan_.intensities[i];
-						max_index = i;
+				if (filter_max_intensites_) {//Only read maximum intensity
+					IntensityStruct temp_intensity;
+					double max_intensity = 0;
+					int max_index = -1;
+					for (int i = 0; i < scan_.intensities.size(); i++) {	//find maximum intensity
+						//ROS_INFO("%d", i);
+						if (scan_.intensities[i] > max_intensity) {
+							max_intensity = scan_.intensities[i];
+							max_index = i;
+						}
+					}
+					temp_intensity.distance = scan_.ranges[max_index];
+					temp_intensity.intensity = max_intensity;
+					ROS_INFO("Found max intensity %f at %fm", temp_intensity.intensity, temp_intensity.distance);
+					assert(max_index != -1);
+					intensity_vector_.push_back(temp_intensity);
+				}
+				else {///*Read all data above threshold
+					for (int i = 0; i < scan_.intensities.size(); i++) {
+						IntensityStruct temp_intensity;
+						temp_intensity.distance = scan_.ranges[i];
+						temp_intensity.intensity = scan_.intensities[i];
+						double compare_intensity = 750 + (600-750)/(9-1)*temp_intensity.distance;
+						if (temp_intensity.intensity > compare_intensity) intensity_vector_.push_back(temp_intensity);
 					}
 				}
-				temp_intensity.distance = scan_.ranges[max_index];
-				temp_intensity.intensity = max_intensity;
-				ROS_INFO("Found max intensity %f at %fm", temp_intensity.intensity, temp_intensity.distance);
-				assert(max_index != -1);
-				intensity_vector_.push_back(temp_intensity);
+				//*/
 				loop_rate.sleep();
 			}
 			WriteToFile();	//write errors to file

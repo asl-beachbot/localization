@@ -44,8 +44,8 @@ class FakeScan {
 	ros::Subscriber sub_vel;
 
 	void Callback(const geometry_msgs::Twist &vel) {	//update velocity
-		//v = vel.linear.x;
-		//w = vel.angular.z;
+		v = vel.linear.x;
+		w = vel.angular.z;
 	}
 
 	void GenerateScan() {
@@ -178,6 +178,8 @@ class FakeScan {
  		x=1.5;
  		y=2;
  		theta = 0;
+ 		v=0;
+ 		w=0;
  		GenerateScan();
  	}
 };
