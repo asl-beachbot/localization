@@ -36,7 +36,9 @@ class FakeScan {
 	const static double max_pole_tilt = 5/360*2*M_PI;	//[rad]
 	const static double max_robot_tilt = 5/360*2*M_PI;	//[rad]
 	const static double sensor_height = 0.5;	//[m]
-	const static double max_dist_error = 0.10;	//[m]
+	const static double max_dist_error = 0.07;	//[m]
+
+	const static bool use_testing_path = true;
 
 	ros::NodeHandle n;
 	ros::Publisher pub_scan;
@@ -46,6 +48,17 @@ class FakeScan {
 	void Callback(const geometry_msgs::Twist &vel) {	//update velocity
 		v = vel.linear.x;
 		w = vel.angular.z;
+	}
+
+	void TestingPath() {
+		if (x < 3.5 && theta <= 0) {v = 1; w = 1.0/2;}
+		if (x == 1.5 && theta > -M_PI/2) {v = 0; w = -M_PI/2;}
+		if (x >= 3.5 && theta > 0) {v = 1; w = 0;}
+		if (x >= 6.0 && theta > 0) {v = 1; w = 1.0/2;}
+		if (x >= 6.0 && theta > M_PI/4) {v = 1; w = 0;}
+		if (x > 10.0 || y > 5) {v = 1; w = 1.0/2;}
+		if (x > 0 && abs(theta) > M_PI - 0.25) {v = 1; w = 0;}
+		if (x <= 0 || y > 10) {v = 1; w = -1/2.5;}
 	}
 
 	void GenerateScan() {
@@ -62,9 +75,7 @@ class FakeScan {
 		for (int i = 0; i < 4; i++) {	//fill pole tilt vector
 			PoleTilt temp_tilt;
 			temp_tilt.angle = ((rand() % 100) / 100.0 *max_pole_tilt);	//angle between [0, max_pole_tilt]
-			//ROS_INFO("pole tilt: %f", temp_tilt.angle);
 			temp_tilt.direction = ((rand() % 100) / 100.0 *2*M_PI);	//direction in [0,2M_PI]
-			//ROS_INFO("pole direction: %f", temp_tilt.direction);
 			pole_tilt.push_back(temp_tilt);
 		}
 		double tilt_x_shift1 = pole_tilt[0].angle*sensor_height*sin(pole_tilt[0].direction);
@@ -78,15 +89,19 @@ class FakeScan {
 
 		while(ros::ok()) {
 			ros::spinOnce();	//get velocity
-			double robot_tilt = ((rand() % 100) / 100.0 *max_robot_tilt);
+			double robot_tilt = max_robot_tilt;
+			NormalizeAngle(theta);
 			if ((ros::Time::now() - begin).sec > 5) {	//wait for initiation to finish
+				if (use_testing_path) {
+					TestingPath();
+				}
 				//make velocity step
 				theta += w/2*1/25;
 				x += v*cos(theta)*1/25;
 				y += v*sin(theta)*1/25;
 				theta += w/2*1/25;
 				//constant robot tilt in beginning
-				robot_tilt = max_robot_tilt;
+				robot_tilt = ((rand() % 100) / 100.0 *max_robot_tilt);
 			}
 			ROS_INFO("Input pose [%f %f] %f rad", x, y, theta);
 			//calculate angles for poles

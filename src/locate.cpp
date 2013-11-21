@@ -31,6 +31,7 @@ class Loc {
 	sensor_msgs::LaserScan scan_;
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseStamped pose_;
+	geometry_msgs::PoseStamped old_pose_;
 	bool initiation_;
 
 	void NormalizeAngle(double& angle) {
@@ -256,9 +257,22 @@ class Loc {
     const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
     double to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);	//to check if circles have intersection
     while (to_root < 0) {		//if no intersection slowly widen circles
-    	a_dist += 0.001;
-    	b_dist += 0.001;
+    	if(a_dist > pow(xp1*xp1+xp2*xp2,0.5)+b_dist) {
+    		a_dist -= 0.01;
+    		b_dist += 0.01;
+    	}
+    	if(b_dist > pow(xp1*xp1+xp2*xp2,0.5)+b_dist) {
+    		a_dist += 0.01;
+    		b_dist -= 0.01;
+    	}
+    	else {
+    		a_dist += 0.01;
+    		b_dist += 0.01;
+    	}
+    	ROS_INFO("corrected a_dist to %f", a_dist);
+    	ROS_INFO("corrected b_dist to %f", b_dist);
     	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
+    	ROS_INFO("to root: %f", to_root);
     	//ROS_INFO("corrected");
     }
     const double delta = 1.0/4*pow(to_root,0.5);
@@ -275,35 +289,33 @@ class Loc {
     ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
     ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
   
-    
-
-    if (pose_.pose.position.x != -2000) {	//use Newton Method
-    	/*double theta_old = -2000;
-    	double theta = tf::getYaw(pose_.pose.orientation);
-    	while(abs(theta - theta_old) > 0.001) {
-    		theta_old = theta;
+    if (pose_.pose.position.x != -2000) {
+    	//////////////////Newton Method////////////////////////
+    	double theta_old = -2000;
+    	double theta_newton = tf::getYaw(pose_.pose.orientation);
+    	while(abs(theta_newton - theta_old) > 0.001) {
+    		theta_old = theta_newton;
     		//ROS_INFO("theta_old %f", theta_old);
     		double f_x = a_dist*cos(a_ang + theta_old -M_PI) +xp1 -b_dist*cos(b_ang + theta_old - M_PI) -xp2;
     		//ROS_INFO("f_x %15.15f", f_x);
     		double f_x_prime = -a_dist*sin(a_ang + theta_old -M_PI) + b_dist*sin(b_ang + theta_old - M_PI);
     		//ROS_INFO("f_x_prime %15.15f", f_x_prime);
-    		theta = theta_old - (f_x/f_x_prime);
+    		theta_newton = theta_old - (f_x/f_x_prime);
     		//ROS_INFO("Newton iteration");
     	}
-    	ROS_INFO("theta newton: %f", theta);
-    	double alpha1 = a_ang +theta -M_PI;
-    	double alpha2 = b_ang +theta -M_PI;
-    	double x1_newton = a_dist*cos(alpha1)+xp1;
-    	double x2_newton = b_dist*cos(alpha2)+xp2;
-    	double y1_newton = a_dist*sin(alpha1)+yp1;
-    	double y2_newton = b_dist*sin(alpha2)+yp2;
-    	double x_newton = (x1_newton+x2_newton)/2;
-    	double y_newton = (y1_newton+y2_newton)/2;
-    	double theta_newton = theta;
-    	NormalizeAngle(theta);
+    	ROS_INFO("theta newton: %f", theta_newton);
+    	const double alpha1 = a_ang +theta_newton -M_PI;
+    	const double alpha2 = b_ang +theta_newton -M_PI;
+    	const double x1_newton = a_dist*cos(alpha1)+xp1;
+    	const double x2_newton = b_dist*cos(alpha2)+xp2;
+    	const double y1_newton = a_dist*sin(alpha1)+yp1;
+    	const double y2_newton = b_dist*sin(alpha2)+yp2;
+    	const double x_newton = (x1_newton+x2_newton)/2;
+    	const double y_newton = (y1_newton+y2_newton)/2;
+    	NormalizeAngle(theta_newton);
     	ROS_INFO("P_N [%f %f] %f", x_newton, y_newton, theta_newton);
-    	double check_dist1 = abs(pow(x1_circle-x_newton,2)+pow(y1_circle-y_newton,2));
-    	double check_dist2 = abs(pow(x2_circle-x_newton,2)+pow(y2_circle-y_newton,2));
+    	const double check_dist1 = pow(x1_circle-x_newton,2)+pow(y1_circle-y_newton,2);
+    	const double check_dist2 = pow(x2_circle-x_newton,2)+pow(y2_circle-y_newton,2);
     	if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
     		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
     		temp_pose.position.x = x1_circle; 
@@ -314,17 +326,15 @@ class Loc {
     		temp_pose.position.x = x2_circle; 
     		temp_pose.position.y = y2_circle;
     	}
-    	/*temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta_newton); 
-    	temp_pose.position.x = x_newton; 
-    	temp_pose.position.y = y_newton;*/
-    	const double a_ang_predicted = atan2(pose_.pose.position.y - yp1, pose_.pose.position.x - xp1);
+    	//////////////Predictor method//////////////////////////////////////
+    	/*const double a_ang_predicted = atan2(pose_.pose.position.y - yp1, pose_.pose.position.x - xp1);
     	const double b_ang_predicted = atan2(pose_.pose.position.y - yp2, pose_.pose.position.x - xp2);
     	const double x_predicted1 = a_dist * cos (a_ang_predicted);
     	const double y_predicted1 = a_dist * sin (a_ang_predicted);
     	const double x_predicted2 = b_dist * cos (b_ang_predicted);
     	const double y_predicted2 = b_dist * sin (b_ang_predicted);
-    	ROS_INFO("P1P [%f %f]", x_predicted1, y_predicted1);
-    	ROS_INFO("P2P [%f %f]", x_predicted2, y_predicted2);
+    	//ROS_INFO("P1P [%f %f]", x_predicted1, y_predicted1);
+    	//ROS_INFO("P2P [%f %f]", x_predicted2, y_predicted2);
     	double check_dist1 = abs(pow(x1_circle-x_predicted1,2)+pow(y1_circle-y_predicted1,2));
     	double check_dist2 = abs(pow(x2_circle-x_predicted1,2)+pow(y2_circle-y_predicted1,2));
     	if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
@@ -336,12 +346,13 @@ class Loc {
     		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2_circle); 
     		temp_pose.position.x = x2_circle; 
     		temp_pose.position.y = y2_circle;
-    	}
+    	}*/
+    	//////////////////////////////////////////////////
     }
     else {	//no Newton if first time
     	//check which pose is the correct one 
-    	bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 0.1);
-    	bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 0.1);
+    	const bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 0.1);
+    	const bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 0.1);
     	assert(first || second);
 	  	NormalizeAngle(theta1_circle);
 	  	NormalizeAngle(theta2_circle);
