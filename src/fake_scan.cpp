@@ -36,7 +36,7 @@ class FakeScan {
 	const static double max_pole_tilt = 5/360*2*M_PI;	//[rad]
 	const static double max_robot_tilt = 5/360*2*M_PI;	//[rad]
 	const static double sensor_height = 0.5;	//[m]
-	const static double max_dist_error = 0.07;	//[m]
+	const static double max_dist_error = 0.00;	//[m]
 
 	const static bool use_testing_path = true;
 

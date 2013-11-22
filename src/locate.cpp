@@ -256,7 +256,7 @@ class Loc {
     //calculate possible points
     const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
     double to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);	//to check if circles have intersection
-    while (to_root < 0) {		//if no intersection slowly widen circles
+    while (to_root < 0 && ros::ok()) {		//if no intersection slowly widen circles
     	if(a_dist > pow(xp1*xp1+xp2*xp2,0.5)+b_dist) {
     		a_dist -= 0.01;
     		b_dist += 0.01;
@@ -269,8 +269,8 @@ class Loc {
     		a_dist += 0.01;
     		b_dist += 0.01;
     	}
-    	ROS_INFO("corrected a_dist to %f", a_dist);
-    	ROS_INFO("corrected b_dist to %f", b_dist);
+    	//ROS_INFO("corrected a_dist to %f", a_dist);
+    	//ROS_INFO("corrected b_dist to %f", b_dist);
     	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
     	ROS_INFO("to root: %f", to_root);
     	//ROS_INFO("corrected");
@@ -293,7 +293,7 @@ class Loc {
     	//////////////////Newton Method////////////////////////
     	double theta_old = -2000;
     	double theta_newton = tf::getYaw(pose_.pose.orientation);
-    	while(abs(theta_newton - theta_old) > 0.001) {
+    	while(abs(theta_newton - theta_old) > 0.001 && ros::ok()) {
     		theta_old = theta_newton;
     		//ROS_INFO("theta_old %f", theta_old);
     		double f_x = a_dist*cos(a_ang + theta_old -M_PI) +xp1 -b_dist*cos(b_ang + theta_old - M_PI) -xp2;

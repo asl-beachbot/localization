@@ -39,6 +39,7 @@ class IntensityTest {
 	std::string file_path_;
 	std::vector<IntensityStruct> intensity_vector_;
 	const static bool filter_max_intensites_ = true;
+	const static bool save_closest_points_ = true;
 
 	void TestIntensities() {
 		ROS_INFO("Starting intensity test");
@@ -76,7 +77,12 @@ class IntensityTest {
 					temp_intensity.intensity = max_intensity;
 					ROS_INFO("Found max intensity %f at %fm", temp_intensity.intensity, temp_intensity.distance);
 					assert(max_index != -1);
-					intensity_vector_.push_back(temp_intensity);
+					if (!save_closest_points_) intensity_vector_.push_back(temp_intensity);
+					else for (int i = max_index - 3; i < max_index +4; i++) {
+						temp_intensity.distance = scan_.ranges[i];
+						temp_intensity.intensity = scan_.intensities[i];
+						intensity_vector_.push_back(temp_intensity);
+					}
 				}
 				else {///*Read all data above threshold
 					for (int i = 0; i < scan_.intensities.size(); i++) {
