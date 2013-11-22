@@ -33,10 +33,10 @@ class FakeScan {
 	//velocities
 	double v;
 	double w;
-	const static double max_pole_tilt = 5/360*2*M_PI;	//[rad]
-	const static double max_robot_tilt = 5/360*2*M_PI;	//[rad]
+	const static double max_pole_tilt = 10/360.0*2*M_PI;	//[rad]
+	const static double max_robot_tilt = 10/360.0*2*M_PI;	//[rad]
 	const static double sensor_height = 0.5;	//[m]
-	const static double max_dist_error = 0.00;	//[m]
+	const static double max_dist_error = 0.07;	//[m]
 
 	const static bool use_testing_path = true;
 
@@ -120,6 +120,7 @@ class FakeScan {
 			double dist3 = pow(pow(x-(xp3+tilt_x_shift3),2)+pow(y-(yp3+tilt_y_shift3),2),0.5);
 			double dist4 = pow(pow(x-(xp4+tilt_x_shift4),2)+pow(y-(yp4+tilt_y_shift4),2),0.5);
 			//adjust distance with robot tilt
+			ROS_INFO("tilt %f", robot_tilt);
 			dist1 *= 1/cos(robot_tilt);
 			dist2 *= 1/cos(robot_tilt);
 			dist3 *= 1/cos(robot_tilt);
@@ -132,10 +133,10 @@ class FakeScan {
 			scan.angle_max = angle_max;
 			scan.angle_increment = angle_increment_rad;
 
-			//ROS_INFO("pushed pole0 at %f m %f rad", dist1, angle1);
-			//ROS_INFO("pushed pole1 at %f m %f rad", dist2, angle2);
-			//ROS_INFO("pushed pole2 at %f m %f rad", dist3, angle3);
-			//ROS_INFO("pushed pole3 at %f m %f rad", dist4, angle4);
+			/*ROS_INFO("pushed pole0 at %f m %f rad", dist1, angle1);
+			ROS_INFO("pushed pole1 at %f m %f rad", dist2, angle2);
+			ROS_INFO("pushed pole2 at %f m %f rad", dist3, angle3);
+			ROS_INFO("pushed pole3 at %f m %f rad", dist4, angle4);*/
 
 			for (int i = 0; i < (angle_max-angle_min)/angle_increment_rad; i++) {
 				if(i == (int)((angle1-angle_min)/angle_increment_rad)) {

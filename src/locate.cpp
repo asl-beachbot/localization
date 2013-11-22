@@ -56,7 +56,7 @@ class Loc {
 		ros::Time begin = ros::Time::now();
 		std::vector<std::vector<localization::scan_point> > extracted_scan_points;
 		ROS_INFO("Gathering data...");
-		double init_duration = 2;
+		double init_duration = 5;
 		while ((ros::Time::now()-begin).sec < init_duration && ros::ok()) {	//gather data for 5 seconds
 			ros::Rate loop_rate(25);
 			ros::spinOnce();	//get one scan
@@ -175,7 +175,7 @@ class Loc {
 		for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 			if (poles_[i].time() != current_time) poles_[i].disappear();
 		}
-		PrintPoleScanData();
+		//PrintPoleScanData();
 		GetPose();
 		EstimateIniviblePoles();
 		PrintPose();
@@ -272,28 +272,29 @@ class Loc {
     	//ROS_INFO("corrected a_dist to %f", a_dist);
     	//ROS_INFO("corrected b_dist to %f", b_dist);
     	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
-    	ROS_INFO("to root: %f", to_root);
+    	//ROS_INFO("to root: %f", to_root);
     	//ROS_INFO("corrected");
     }
     const double delta = 1.0/4*pow(to_root,0.5);
-    double x1_circle = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
-    double x2_circle = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(yp1-yp2)/(D*D)*delta;
-    double y1_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
-    double y2_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
+    const double x1_circle = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
+    const double x2_circle = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(yp1-yp2)/(D*D)*delta;
+    const double y1_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) - 2*(xp1-xp2)/(D*D)*delta;
+    const double y2_circle = (yp1+yp2)/2+(yp2-yp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(xp1-xp2)/(D*D)*delta;
     
     //bot orientation for possible points
     double theta1_circle = M_PI - a_ang + atan2(y1_circle-yp1,x1_circle-xp1);
     double theta2_circle = M_PI - a_ang + atan2(y2_circle-yp1,x2_circle-xp1);
-    //NormalizeAngle(theta1_circle);
-    //NormalizeAngle(theta2_circle);
     ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
     ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
   
     if (pose_.pose.position.x != -2000) {
     	//////////////////Newton Method////////////////////////
+	    NormalizeAngle(theta1_circle);
+	    NormalizeAngle(theta2_circle);
     	double theta_old = -2000;
     	double theta_newton = tf::getYaw(pose_.pose.orientation);
-    	while(abs(theta_newton - theta_old) > 0.001 && ros::ok()) {
+    	int it = 0;
+    	while(std::abs(theta_newton - theta_old) > 0.001 && ros::ok() && it < 5) {
     		theta_old = theta_newton;
     		//ROS_INFO("theta_old %f", theta_old);
     		double f_x = a_dist*cos(a_ang + theta_old -M_PI) +xp1 -b_dist*cos(b_ang + theta_old - M_PI) -xp2;
@@ -302,8 +303,8 @@ class Loc {
     		//ROS_INFO("f_x_prime %15.15f", f_x_prime);
     		theta_newton = theta_old - (f_x/f_x_prime);
     		//ROS_INFO("Newton iteration");
+    		it++;
     	}
-    	ROS_INFO("theta newton: %f", theta_newton);
     	const double alpha1 = a_ang +theta_newton -M_PI;
     	const double alpha2 = b_ang +theta_newton -M_PI;
     	const double x1_newton = a_dist*cos(alpha1)+xp1;
@@ -314,18 +315,40 @@ class Loc {
     	const double y_newton = (y1_newton+y2_newton)/2;
     	NormalizeAngle(theta_newton);
     	ROS_INFO("P_N [%f %f] %f", x_newton, y_newton, theta_newton);
-    	const double check_dist1 = pow(x1_circle-x_newton,2)+pow(y1_circle-y_newton,2);
-    	const double check_dist2 = pow(x2_circle-x_newton,2)+pow(y2_circle-y_newton,2);
-    	if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
-    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
-    		temp_pose.position.x = x1_circle; 
-    		temp_pose.position.y = y1_circle;
-    	}
-    	else {
-    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2_circle); 
-    		temp_pose.position.x = x2_circle; 
-    		temp_pose.position.y = y2_circle;
-    	}
+    	const double check_dist_newton1 = pow(pow(x1_circle-x_newton,2)+pow(y1_circle-y_newton,2),0.5);
+    	const double check_dist_newton2 = pow(pow(x2_circle-x_newton,2)+pow(y2_circle-y_newton,2),0.5);
+	    if (check_dist_newton1 < 0.1 || check_dist_newton2 < 0.1) {		//only use when Newton estimate is good
+		    	if (check_dist_newton1 < check_dist_newton2) {	//use newton's method to find best circle point
+		    		const double check_dist1 = pow(pow(x1_circle-pose_.pose.position.x,2)+pow(y1_circle-pose_.pose.position.y,2),0.5);
+		    		if (check_dist1 < 1) {	//check if newton point is close by chance
+			    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
+			    		temp_pose.position.x = x1_circle; 
+			    		temp_pose.position.y = y1_circle;
+			    	}
+		    	}
+		    	else {
+		    		const double check_dist2 = pow(pow(x2_circle-pose_.pose.position.x,2)+pow(y2_circle-pose_.pose.position.y,2), 0.5);
+		    		if (check_dist2 < 1) {
+			    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2_circle); 
+			    		temp_pose.position.x = x2_circle; 
+			    		temp_pose.position.y = y2_circle;
+			    	}
+		    	}
+	    }
+	    else {	//use closest point to last measurement
+	    	const double check_dist1 = pow(pow(x1_circle-pose_.pose.position.x,2)+pow(y1_circle-pose_.pose.position.y,2),0.5);
+    		const double check_dist2 = pow(pow(x2_circle-pose_.pose.position.x,2)+pow(y2_circle-pose_.pose.position.y,2), 0.5);
+    		if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
+	    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
+	    		temp_pose.position.x = x1_circle; 
+	    		temp_pose.position.y = y1_circle;
+	    	}
+	    	else {
+	    		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta2_circle); 
+	    		temp_pose.position.x = x2_circle; 
+	    		temp_pose.position.y = y2_circle;
+	    	}
+	    }
     	//////////////Predictor method//////////////////////////////////////
     	/*const double a_ang_predicted = atan2(pose_.pose.position.y - yp1, pose_.pose.position.x - xp1);
     	const double b_ang_predicted = atan2(pose_.pose.position.y - yp2, pose_.pose.position.x - xp2);
@@ -335,8 +358,8 @@ class Loc {
     	const double y_predicted2 = b_dist * sin (b_ang_predicted);
     	//ROS_INFO("P1P [%f %f]", x_predicted1, y_predicted1);
     	//ROS_INFO("P2P [%f %f]", x_predicted2, y_predicted2);
-    	double check_dist1 = abs(pow(x1_circle-x_predicted1,2)+pow(y1_circle-y_predicted1,2));
-    	double check_dist2 = abs(pow(x2_circle-x_predicted1,2)+pow(y2_circle-y_predicted1,2));
+    	double check_dist1 = std::abs(pow(x1_circle-x_predicted1,2)+pow(y1_circle-y_predicted1,2));
+    	double check_dist2 = std::abs(pow(x2_circle-x_predicted1,2)+pow(y2_circle-y_predicted1,2));
     	if (check_dist1 < check_dist2) {	//use newton's method to find best circle point
     		temp_pose.orientation = tf::createQuaternionMsgFromYaw(theta1_circle); 
     		temp_pose.position.x = x1_circle; 
@@ -419,8 +442,8 @@ class Loc {
 						if(std::find(already_processed.begin(), already_processed.end(), j) != already_processed.end());
 						else {
 							//check if close enough
-							if (abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 1
-								&& abs(scan->at(i).distance - scan->at(j).distance) < 1) {
+							if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 1
+								&& std::abs(scan->at(i).distance - scan->at(j).distance) < 1) {
 								ppp++;
 								already_processed.push_back(j);
 								target.back().angle += scan->at(j).angle;
