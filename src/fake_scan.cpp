@@ -120,7 +120,7 @@ class FakeScan {
 			double dist3 = pow(pow(x-(xp3+tilt_x_shift3),2)+pow(y-(yp3+tilt_y_shift3),2),0.5);
 			double dist4 = pow(pow(x-(xp4+tilt_x_shift4),2)+pow(y-(yp4+tilt_y_shift4),2),0.5);
 			//adjust distance with robot tilt
-			ROS_INFO("tilt %f", robot_tilt);
+			//ROS_INFO("tilt %f", robot_tilt);
 			dist1 *= 1/cos(robot_tilt);
 			dist2 *= 1/cos(robot_tilt);
 			dist3 *= 1/cos(robot_tilt);
