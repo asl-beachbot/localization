@@ -175,7 +175,7 @@ class Loc {
 		for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 			if (poles_[i].time() != current_time) poles_[i].disappear();
 		}
-		//PrintPoleScanData();
+		PrintPoleScanData();
 		GetPose();
 		EstimateIniviblePoles();
 		PrintPose();
@@ -222,7 +222,7 @@ class Loc {
 				NormalizeAngle(temp_scan.angle);
 				temp_scan.distance = pow(pow(dx,2)+pow(dy,2),0.5);
 				poles_[i].update(temp_scan);
-				//ROS_INFO("Changed pole %d to %f m %f rad", i, temp_scan.distance, temp_scan.angle);
+				ROS_INFO("Changed pole %d to %f m %f rad", i, temp_scan.distance, temp_scan.angle);
 			}
 		}
 		//ROS_INFO("Done estimating");
@@ -256,7 +256,9 @@ class Loc {
     //calculate possible points
     const double D = pow((xp2-xp1)*(xp2-xp1)+(yp2-yp1)*(yp2-yp1),0.5);
     double to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);	//to check if circles have intersection
-    while (to_root < 0 && ros::ok()) {		//if no intersection slowly widen circles
+    const int max_iter = 50;
+    int iter = 0;
+    while (to_root < 0 && ros::ok() && iter < max_iter) {		//if no intersection slowly widen circles
     	if(a_dist > pow(xp1*xp1+xp2*xp2,0.5)+b_dist) {
     		a_dist -= 0.01;
     		b_dist += 0.01;
@@ -269,11 +271,12 @@ class Loc {
     		a_dist += 0.01;
     		b_dist += 0.01;
     	}
-    	//ROS_INFO("corrected a_dist to %f", a_dist);
-    	//ROS_INFO("corrected b_dist to %f", b_dist);
+    	ROS_INFO("corrected a_dist to %f", a_dist);
+    	ROS_INFO("corrected b_dist to %f", b_dist);
     	to_root = (D+a_dist+b_dist)*(D+a_dist-b_dist)*(D-a_dist+b_dist)*(-D+a_dist+b_dist);
     	//ROS_INFO("to root: %f", to_root);
     	//ROS_INFO("corrected");
+    	iter++;
     }
     const double delta = 1.0/4*pow(to_root,0.5);
     const double x1_circle = (xp1+xp2)/2+(xp2-xp1)*(a_dist*a_dist-b_dist*b_dist)/(2*D*D) + 2*(yp1-yp2)/(D*D)*delta;
