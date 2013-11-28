@@ -3,7 +3,10 @@ cmake_minimum_required(VERSION 2.8.3)
 project(localization)
 
 ## Find catkin and any catkin packages
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+find_package(Eigen REQUIRED)
 find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs genmsg tf)
+include_directories(${Eigen_INCLUDE_DIRS})
 
 ## Declare ROS messages and services
 add_message_files(DIRECTORY msg FILES xy_vector.msg scan_vector.msg scan_point.msg xy_point.msg)

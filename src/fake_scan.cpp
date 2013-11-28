@@ -3,6 +3,7 @@
 #include "sensor_msgs/LaserScan.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Twist.h"
+#include "nav_msgs/Odometry.h"
 #include "tf/transform_datatypes.h"
 
 struct PoleTilt {
@@ -37,12 +38,14 @@ class FakeScan {
 	const static double max_robot_tilt = 0/360.0*2*M_PI;	//[rad]
 	const static double sensor_height = 0.5;	//[m]
 	const static double max_dist_error = 0.00;	//[m]
+	const static double b = 0.5;	//Wheel distance [m]
 
 	const static bool use_testing_path = true;
 
 	ros::NodeHandle n;
 	ros::Publisher pub_scan;
 	ros::Publisher pub_ref_pose;
+	ros::Publisher pub_odom;
 	ros::Subscriber sub_vel;
 
 	void Callback(const geometry_msgs::Twist &vel) {	//update velocity
@@ -178,6 +181,16 @@ class FakeScan {
 			ref_pose.header.seq = 1;
 			ref_pose.header.stamp = ros::Time::now();
 			ref_pose.header.frame_id = "fixed_frame";
+			nav_msgs::Odometry odom;
+			odom.header.stamp = ros::Time::now();
+			odom.header.frame_id = "robot_frame";
+			odom.header.seq = 1;
+			odom.child_frame_id = "robot_frame";
+			odom.twist.twist.linear.x = v + w*b/2;	//speed of right wheel
+			odom.twist.twist.linear.y = v +- w*b/2;	//speed of left wheel
+			odom.pose.pose.position.x = (v + w*b/2)/25;	//distance travelled of right wheel
+			odom.pose.pose.position.y = (v - w*b/2)/25;	//distance travelled of left wheel
+			pub_odom.publish(odom);
 			pub_ref_pose.publish(ref_pose);
 			pub_scan.publish(scan);
 			loop_rate.sleep();
@@ -189,6 +202,7 @@ class FakeScan {
  	FakeScan() {
 		pub_scan = n.advertise<sensor_msgs::LaserScan>("/scan",1000);
 		pub_ref_pose = n.advertise<geometry_msgs::PoseStamped>("ref_pose",1000);
+		pub_odom = n.advertise<nav_msgs::Odometry>("/odom",1000);
 		sub_vel = n.subscribe("velocity",1000, &FakeScan::Callback, this);
  		//starting pose (has to be set appropriately, please leave as is)
  		x=1.5;

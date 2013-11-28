@@ -1,13 +1,12 @@
-#include "locate.h"
-#include "tf/transform_datatypes.h"
+#include "locate_kalman.cpp"
 
 void Loc::InitiatePoles() {
+	ros::Rate loop_rate(25);
 	ros::Time begin = ros::Time::now();
 	std::vector<std::vector<localization::scan_point> > extracted_scan_points;
 	ROS_INFO("Gathering data...");
 	double init_duration = 5;
 	while ((ros::Time::now()-begin).sec < init_duration && ros::ok()) {	//gather data for 5 seconds
-		ros::Rate loop_rate(25);
 		ros::spinOnce();	//get one scan
 		std::vector<localization::scan_point> temp_scan_points;
 		ExtractPoleScans(&temp_scan_points);	//extract relevant poles
@@ -45,7 +44,13 @@ void Loc::InitiatePoles() {
 		else ROS_WARN("Only found %lu poles. At least 2 needed.", averaged_scan_points.size());
 	}
 	//get first initial pose for kalman filter
-	
+	RefreshData();
+	GetPose();
+	EstimateInvisiblePoles();
+	PrintPose();
+	PublishPoles();
+	PublishPose();
+	loop_rate.sleep();
 }
 
 std::vector<localization::xy_point> Loc::ScanToXY(const std::vector<localization::scan_point> scan) {
@@ -74,7 +79,7 @@ std::vector<localization::xy_point> Loc::ScanToXY(const std::vector<localization
 }
 
 //used to calculate initial position
-void Loc::calcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector) {
+void Loc::CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector) {
   //pole coordinates
   double xp1 = pole1.xy_coords().x;
   double yp1 = pole1.xy_coords().y;
@@ -222,7 +227,7 @@ void Loc::GetPose() {
 		int j = i+1;
 		while (!poles_[j].visible() && j < poles_.size()) j++;
 		if (j > poles_.size()-1) break;
-		calcPose(poles_[i], poles_[j], &pose_vector);
+		CalcPose(poles_[i], poles_[j], &pose_vector);
 		i = j;
 	}
 	double x = 0, y = 0, theta = 0;
@@ -243,4 +248,9 @@ void Loc::GetPose() {
 	pose_.header.seq = 1;
 	pose_.header.stamp = current_time_;
 	pose_.header.frame_id = "fixed_frame";
+	//initiate probability matrix
+	for (int i = 0; i < pose_.pose.covariance.size(); i++) pose_.pose.covariance[i] = 0;
+	pose_.pose.covariance[0] = 0.1;
+	pose_.pose.covariance[7] = 0.1;
+	pose_.pose.covariance[35] = 0.1;
 }

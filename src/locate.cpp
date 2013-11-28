@@ -1,6 +1,5 @@
 #include "locate_helper.cpp"
 #include "localization/scan_point.h"
-#include "tf/transform_datatypes.h"
 
 Loc::Loc() {
 	ROS_INFO("Started localization node");
@@ -29,12 +28,8 @@ void Loc::StateHandler() {	//runs either initiation or localization
 
 void Loc::Locate() {
 	ros::Rate loop_rate(25);
-	ros::spinOnce();
-	std::vector<localization::scan_point> locate_scans;	//TODO: put most of the following stuff in callback
-	ExtractPoleScans(&locate_scans);	//get relevant scan points
-	if (locate_scans.size() > 1) UpdatePoles(locate_scans);		//assign scans to respective poles
-	else ROS_WARN("Only seeing %lu poles. At least 2 needed.", locate_scans.size());
-	GetPose();
+	RefreshData();
+	DoTheKalman();
 	EstimateInvisiblePoles();
 	PrintPose();
 	PublishPoles();
@@ -155,13 +150,14 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan) {
 
 void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {
 	scan_ = scan;
-	current_time_ = scan_.header.stamp;
+	scan_.header.stamp = current_time_;
 	//ROS_INFO("scan %d", scan.header.seq);
 	//ROS_INFO("scan_ %d", scan_.header.seq);
 }
 
 void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
-	
+	odom_ = odom;
+	odom_.header.stamp = current_time_;
 }
 
 int main(int argc, char **argv) {
