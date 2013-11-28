@@ -3,6 +3,7 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/PointStamped.h"
+#include "nav_msgs/Odometry.h"
 #include "pole.cpp"
 #include <cmath>
 
@@ -12,7 +13,8 @@ class Loc {
 
  private:
 	ros::NodeHandle n_;
-	ros::Subscriber sub_;
+	ros::Subscriber sub_scan_;
+	ros::Subscriber sub_odom_;
 	ros::Publisher pub_pose_;
 	ros::Publisher pub_pole_;
 
@@ -20,6 +22,7 @@ class Loc {
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseWithCovarianceStamped pose_;
 	bool initiation_;
+	ros::Time current_time_;
 
 	void NormalizeAngle(double& angle);
 	void StateHandler();
@@ -37,5 +40,6 @@ class Loc {
 	bool IsPolePoint(const double &intensity, const double &distance);
 	void ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points);
 	void MinimizeScans(std::vector<localization::scan_point> *scan);
-	void Callback(const sensor_msgs::LaserScan &scan);
+	void ScanCallback(const sensor_msgs::LaserScan &scan);
+	void OdomCallback(const nav_msgs::Odometry &odom);
 };
