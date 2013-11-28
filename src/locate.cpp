@@ -57,7 +57,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 		if (poles_[i].time() != current_time_) poles_[i].disappear();
 	}
-	PrintPoleScanData();
+	//PrintPoleScanData();
 }
 
 
@@ -73,7 +73,7 @@ void Loc::EstimateInvisiblePoles() {
 			NormalizeAngle(temp_scan.angle);
 			temp_scan.distance = pow(pow(dx,2)+pow(dy,2),0.5);
 			poles_[i].update(temp_scan);
-			ROS_INFO("Changed pole %d to %f m %f rad", i, temp_scan.distance, temp_scan.angle);
+			//ROS_INFO("Changed pole %d to %f m %f rad", i, temp_scan.distance, temp_scan.angle);
 		}
 	}
 	//ROS_INFO("Done estimating");
