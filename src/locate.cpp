@@ -10,6 +10,7 @@ Loc::Loc() {
 	pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
 	initiation_ = true;	//start with initiation
 	pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
+	odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
 	StateHandler();
 }
 
@@ -45,7 +46,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 		for (int j = 0; j < poles_.size(); j++) {
 			localization::scan_point current_scan = poles_[j].laser_coords();
 			double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
-			+ pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
+				+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
 			if (current_dist < min_dist) {
 				min_dist = current_dist;
 				index = j;
@@ -57,7 +58,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 		if (poles_[i].time() != current_time_) poles_[i].disappear();
 	}
-	//PrintPoleScanData();
+	PrintPoleScanData();
 }
 
 
@@ -127,8 +128,8 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan) {
 					if(std::find(already_processed.begin(), already_processed.end(), j) != already_processed.end());
 					else {
 						//check if close enough
-						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 1
-							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 1) {
+						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.5
+							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 0.5) {
 							ppp++;
 							already_processed.push_back(j);
 							target.back().angle += scan->at(j).angle;

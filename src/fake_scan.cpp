@@ -5,6 +5,7 @@
 #include "geometry_msgs/Twist.h"
 #include "nav_msgs/Odometry.h"
 #include "tf/transform_datatypes.h"
+#include <cmath>
 
 struct PoleTilt {
 	double angle;
@@ -35,7 +36,7 @@ class FakeScan {
 	double v;
 	double w;
 	const static double max_pole_tilt = 0/360.0*2*M_PI;	//[rad]
-	const static double max_robot_tilt = 3.5/360.0*2*M_PI;	//[rad]
+	const static double max_robot_tilt = 10/360.0*2*M_PI;	//[rad]
 	const static double sensor_height = 0.5;	//[m]
 	const static double max_dist_error = 0.02;	//[m]
 	const static double b = 0.5;	//Wheel distance [m]
@@ -92,7 +93,7 @@ class FakeScan {
 
 		while(ros::ok()) {
 			ros::spinOnce();	//get velocity
-			double robot_tilt = max_robot_tilt;
+			double robot_tilt = 0;
 			NormalizeAngle(theta);
 			if ((ros::Time::now() - begin).sec > 5) {	//wait for initiation to finish
 				if (use_testing_path) {
@@ -142,27 +143,27 @@ class FakeScan {
 			ROS_INFO("pushed pole3 at %f m %f rad", dist4, angle4);*/
 
 			for (int i = 0; i < (angle_max-angle_min)/angle_increment_rad; i++) {
-				if(i == (int)((angle1-angle_min)/angle_increment_rad)) {
+				if(i == (int)((angle1-angle_min)/angle_increment_rad) && dist1*tan(robot_tilt) < 0.35) {
 					scan.ranges.push_back(dist1 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);	//with error
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole0.1 %f at index %u", scan.ranges.back(), i);
 				}
-				if(i == (int)((angle1-angle_min)/angle_increment_rad)+1) {
+				if(i == (int)((angle1-angle_min)/angle_increment_rad)+1 && dist1*tan(robot_tilt) < 0.35) {
 					scan.ranges.push_back(dist1 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole0.2 %f at index %u", scan.ranges.back(), i);
 				}
-				if(i == (int)((angle2-angle_min)/angle_increment_rad)) {
+				if(i == (int)((angle2-angle_min)/angle_increment_rad) && dist2*tan(robot_tilt) < 0.35) {
 					scan.ranges.push_back(dist2 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed %f at index %u", scan.ranges.back(), i);	
 				}
-				if(i == (int)((angle3-angle_min)/angle_increment_rad)) {
+				if(i == (int)((angle3-angle_min)/angle_increment_rad) && dist3*tan(robot_tilt) < 0.35) {
 					scan.ranges.push_back(dist3 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed %f at index %u", scan.ranges.back(), i);	
 				}
-				if(i == (int)((angle4-angle_min)/angle_increment_rad)) {
+				if(i == (int)((angle4-angle_min)/angle_increment_rad) && dist4*tan(robot_tilt) < 0.35) {
 					scan.ranges.push_back(dist4 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole3 %f at index %u", scan.ranges.back(), i);	

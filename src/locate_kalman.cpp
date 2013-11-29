@@ -15,11 +15,21 @@ void Loc::DoTheKalman() {
 	//ROS_INFO("covariance %f", covariance(0,0));
 
 	//predict
-	state += PredictPositionDelta();	//position delta resulting from odometry prediction
-	Eigen::Matrix3d f_x = StateJacobi();
-	covariance = f_x*covariance*f_x.transpose();
-	Eigen::MatrixXd f_u = InputJacobi();
-	covariance += f_u*Q()*f_u.transpose();
+	if (odom_.pose.pose.position.x != -2000.0) {
+		state += PredictPositionDelta();	//position delta resulting from odometry prediction
+		Eigen::Matrix3d f_x = StateJacobi();
+		covariance = f_x*covariance*f_x.transpose();
+		Eigen::MatrixXd f_u = InputJacobi();
+		covariance += f_u*Q()*f_u.transpose();
+		ROS_INFO("predicted: [%f %f] %f", state[0], state[1], state[2]);
+	}
+	else {
+		covariance <<
+			9999999, 0, 0,
+			0, 9999999, 0, 
+			0, 0, 9999999;
+		ROS_INFO("No Odometry data");
+	}
 	//measure
 	std::vector<Pole> visible_poles;	//get all visible poles
 	for (int i = 0; i < poles_.size(); i++) if (poles_[i].visible()) visible_poles.push_back(poles_[i]);
@@ -30,14 +40,10 @@ void Loc::DoTheKalman() {
 	Eigen::MatrixXd Sigma = H*covariance*H.transpose()+R;
 	Eigen::MatrixXd K = covariance*H.transpose()*Sigma.inverse();
 	Eigen::VectorXd nu = z-h_x;
-	//ROS_INFO("innovation: [%f, %f]", nu[0], nu[1]);
-	
-	//std::cout << "R\n" << R << std::endl;
-	//std::cout << "H\n" << H << std::endl;
-	//std::cout << "K\n" << K << std::endl;
-	//std::cout << "Sigma\n" << Sigma << std::endl;
+	//std::cout << "nu\n" << nu << std::endl;
 	state += K*(nu);	//update state with measurement
 	covariance -= K*Sigma*K.transpose();	//update covariance with measurement
+	//std::cout << "cov\n" << covariance << std::endl;
 	
 	//write vector and matrix back to ros message
 	pose_.pose.pose.position.x = state[0];
@@ -63,24 +69,24 @@ Eigen::Matrix3d Loc::StateJacobi() {
 	const double ds = (odom_.pose.pose.position.x+odom_.pose.pose.position.y)/2;
 	const double dth = (odom_.pose.pose.position.x-odom_.pose.pose.position.y)/b;
 	const double theta = tf::getYaw(pose_.pose.pose.orientation);
-	Eigen::Matrix3d jacobi;
-	jacobi << 
+	Eigen::Matrix3d f_x;
+	f_x << 
 		1, 0, -ds*sin(theta+dth/2),
 		0, 1, ds*cos(theta + dth/2),
 		0, 0, 1;
-	return jacobi;
+	return f_x;
 }
 
 Eigen::MatrixXd Loc::InputJacobi() {
 	const double ds = (odom_.pose.pose.position.x+odom_.pose.pose.position.y)/2;
 	const double dth = (odom_.pose.pose.position.x-odom_.pose.pose.position.y)/b;
 	const double theta = tf::getYaw(pose_.pose.pose.orientation);
-	Eigen::MatrixXd jacobi(3,2);
-	jacobi << 
+	Eigen::MatrixXd f_u(3,2);
+	f_u << 
 		0.5*cos(theta + dth/2)-ds/(2*b)*sin(theta + dth/2), 0.5*cos(theta + dth/2)+ds/(2*b)*sin(theta + dth/2),
 		0.5*sin(theta + dth/2)+ds/(2*b)*cos(theta + dth/2), 0.5*sin(theta + dth/2)-ds/(2*b)*cos(theta + dth/2),
 		1/b, 1/b;
-		return jacobi;
+		return f_u;
 }
 
 Eigen::Matrix2d Loc::Q() {
@@ -90,6 +96,7 @@ Eigen::Matrix2d Loc::Q() {
 	q <<
 		k1*odom_.pose.pose.position.x, 0,
 		0, k2*odom_.pose.pose.position.y;
+	return q;
 }
 
 Eigen::VectorXd Loc::EstimateReferencePoint(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state) {
@@ -121,8 +128,8 @@ Eigen::MatrixXd Loc::EstimateJacobi(const std::vector<Pole> &visible_poles, cons
 Eigen::MatrixXd Loc::ErrorMatrix(const std::vector<Pole> &visible_poles) {
 	Eigen::MatrixXd R = Eigen::MatrixXd::Zero(visible_poles.size()*2,visible_poles.size()*2);
 	for (int i = 0; i < visible_poles.size(); i++) {
-		R(2*i,2*i) = 0.02*0.02;
-		R(2*i+1,2*i+1) = 0.02*0.02;
+		R(2*i,2*i) = 0.002*0.002;
+		R(2*i+1,2*i+1) = 0.002*0.002;
 	}
 	return R;
 }

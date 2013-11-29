@@ -37,7 +37,7 @@ void Loc::PrintPose() {
 
 void Loc::PrintPoleScanData() {
 	for (int i = 0; i < poles_.size(); i++) 
-		ROS_INFO("found pole%d at %f m %f rad", i, poles_[i].laser_coords().distance, poles_[i].laser_coords().angle);
+		if (poles_[i].visible()) ROS_INFO("found pole%d at %f m %f rad", i, poles_[i].laser_coords().distance, poles_[i].laser_coords().angle);
 }
 
 //function to fill the poles with data from the current laser scan
@@ -46,6 +46,6 @@ void Loc::RefreshData() {
 	ros::spinOnce();
 	std::vector<localization::scan_point> locate_scans;	//TODO: put most of the following stuff in callback
 	ExtractPoleScans(&locate_scans);	//get relevant scan points
-	if (locate_scans.size() > 0) UpdatePoles(locate_scans);		//assign scans to respective poles
-	else ROS_WARN("Not seeing any poles");
+	UpdatePoles(locate_scans);		//assign scans to respective poles
+	if (locate_scans.size() == 0) ROS_WARN("Not seeing any poles");
 }
