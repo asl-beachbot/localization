@@ -25,7 +25,9 @@ class Loc {
 	nav_msgs::Odometry odom_;
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseWithCovarianceStamped pose_;
+	geometry_msgs::Pose initial_pose_;
 	bool initiation_;
+	bool using_pioneer_;
 	ros::Time current_time_;
 
 	void NormalizeAngle(double& angle);

@@ -248,6 +248,7 @@ void Loc::GetPose() {
 	pose_.header.seq = 1;
 	pose_.header.stamp = current_time_;
 	pose_.header.frame_id = "fixed_frame";
+	initial_pose_ = pose_.pose.pose;
 	//initiate probability matrix
 	for (int i = 0; i < pose_.pose.covariance.size(); i++) pose_.pose.covariance[i] = 0;
 	pose_.pose.covariance[0] = 0.0;

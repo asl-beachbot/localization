@@ -3,8 +3,10 @@
 
 Loc::Loc() {
 	ROS_INFO("Started localization node");
+	using_pioneer_ = true;	//if using pioneer for testing
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
-	sub_odom_ = n_.subscribe("/odom",1000, &Loc::OdomCallback, this);
+	if(using_pioneer_) sub_odom_ = n_.subscribe("/pose",1000, &Loc::OdomCallback, this);
+	else sub_odom_ = n_.subscribe("/odom",1000, &Loc::OdomCallback, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
 	pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
@@ -150,8 +152,10 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan) {
 }
 
 void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {
-	scan_ = scan;
-	scan_.header.stamp = current_time_;
+	if (scan.intensities.size() > 0) {	//don't take scans from old laser
+		scan_ = scan;
+		scan_.header.stamp = current_time_;
+	}
 	//ROS_INFO("scan %d", scan.header.seq);
 	//ROS_INFO("scan_ %d", scan_.header.seq);
 }

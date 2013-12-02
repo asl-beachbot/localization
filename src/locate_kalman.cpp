@@ -16,11 +16,23 @@ void Loc::DoTheKalman() {
 
 	//predict
 	if (odom_.pose.pose.position.x != -2000.0) {
-		state += PredictPositionDelta();	//position delta resulting from odometry prediction
-		Eigen::Matrix3d f_x = StateJacobi();
-		covariance = f_x*covariance*f_x.transpose();
-		Eigen::MatrixXd f_u = InputJacobi();
-		covariance += f_u*Q()*f_u.transpose();
+		if (using_pioneer_) {
+			const double init_theta = tf::getYaw(initial_pose_.orientation);
+			state[0] = (odom_.pose.pose.position.x * cos(init_theta) - odom_.pose.pose.position.y * sin(init_theta)) +initial_pose_.position.x;
+			state[1] = (odom_.pose.pose.position.x * sin(init_theta) + odom_.pose.pose.position.y * cos(init_theta)) +initial_pose_.position.y;
+			state[2] = init_theta + tf::getYaw(odom_.pose.pose.orientation);
+			covariance << 
+				odom_.pose.covariance[0], 0, 0,
+				0, odom_.pose.covariance[7], 0, 
+				0, 0, odom_.pose.covariance[35];
+		}
+		else {	
+			state += PredictPositionDelta();	//position delta resulting from odometry prediction
+			Eigen::Matrix3d f_x = StateJacobi();
+			covariance = f_x*covariance*f_x.transpose();
+			Eigen::MatrixXd f_u = InputJacobi();
+			covariance += f_u*Q()*f_u.transpose();
+		}
 		ROS_INFO("predicted: [%f %f] %f", state[0], state[1], state[2]);
 	}
 	else {
@@ -33,16 +45,18 @@ void Loc::DoTheKalman() {
 	//measure
 	std::vector<Pole> visible_poles;	//get all visible poles
 	for (int i = 0; i < poles_.size(); i++) if (poles_[i].visible()) visible_poles.push_back(poles_[i]);
-	Eigen::VectorXd h_x = EstimateReferencePoint(visible_poles, state);
-	Eigen::MatrixXd H = EstimateJacobi(visible_poles, state);
-	Eigen::MatrixXd R = ErrorMatrix(visible_poles);
-	Eigen::VectorXd z = CalculateMeasuredPoints(visible_poles);
-	Eigen::MatrixXd Sigma = H*covariance*H.transpose()+R;
-	Eigen::MatrixXd K = covariance*H.transpose()*Sigma.inverse();
-	Eigen::VectorXd nu = z-h_x;
-	//std::cout << "nu\n" << nu << std::endl;
-	state += K*(nu);	//update state with measurement
-	covariance -= K*Sigma*K.transpose();	//update covariance with measurement
+	if (visible_poles.size() > 0) {		//dont make scan step if no poles visible
+		Eigen::VectorXd h_x = EstimateReferencePoint(visible_poles, state);
+		Eigen::MatrixXd H = EstimateJacobi(visible_poles, state);
+		Eigen::MatrixXd R = ErrorMatrix(visible_poles);
+		Eigen::VectorXd z = CalculateMeasuredPoints(visible_poles);
+		Eigen::MatrixXd Sigma = H*covariance*H.transpose()+R;
+		Eigen::MatrixXd K = covariance*H.transpose()*Sigma.inverse();
+		Eigen::VectorXd nu = z-h_x;
+		//std::cout << "nu\n" << nu << std::endl;
+		state += K*(nu);	//update state with measurement
+		covariance -= K*Sigma*K.transpose();	//update covariance with measurement
+	}
 	//std::cout << "cov\n" << covariance << std::endl;
 	
 	//write vector and matrix back to ros message
@@ -52,6 +66,10 @@ void Loc::DoTheKalman() {
 	pose_.pose.covariance[0] = covariance(0,0);
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
+	//reset odometry
+	odom_.pose.pose.position.x = -2000.0;
+	//reset laser
+	scan_.intensities.clear();
 }
 
 Eigen::Vector3d Loc::PredictPositionDelta() {
