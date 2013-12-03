@@ -1,0 +1,8 @@
+<launch>
+
+	<group ns="localization">
+		<node pkg="localization" name="laser_angle" type="laser_angle" output="screen"/>
+	</group>
+
+
+</launch>

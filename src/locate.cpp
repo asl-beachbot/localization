@@ -3,7 +3,7 @@
 
 Loc::Loc() {
 	ROS_INFO("Started localization node");
-	using_pioneer_ = true;	//if using pioneer for testing
+	using_pioneer_ = false;	//if using pioneer for testing
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
 	if(using_pioneer_) sub_odom_ = n_.subscribe("/pose",1000, &Loc::OdomCallback, this);
 	else sub_odom_ = n_.subscribe("/odom",1000, &Loc::OdomCallback, this);
@@ -100,7 +100,7 @@ void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_poin
 		//TODO: some kind of clever function for intensities
 		if (IsPolePoint(scan_.intensities[i], scan_.ranges[i])) {
 			localization::scan_point temp;
-			temp.distance = scan_.ranges[i];
+			temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
 			temp.angle = (scan_.angle_min+scan_.angle_increment*i);
 			//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
 			scan_pole_points->push_back(temp);

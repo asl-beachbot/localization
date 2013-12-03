@@ -146,8 +146,8 @@ Eigen::MatrixXd Loc::EstimateJacobi(const std::vector<Pole> &visible_poles, cons
 Eigen::MatrixXd Loc::ErrorMatrix(const std::vector<Pole> &visible_poles) {
 	Eigen::MatrixXd R = Eigen::MatrixXd::Zero(visible_poles.size()*2,visible_poles.size()*2);
 	for (int i = 0; i < visible_poles.size(); i++) {
-		R(2*i,2*i) = 0.002*0.002;
-		R(2*i+1,2*i+1) = 0.002*0.002;
+		R(2*i,2*i) = 0.012*0.012;
+		R(2*i+1,2*i+1) = 0.012*0.012;
 	}
 	return R;
 }

@@ -40,6 +40,7 @@ class FakeScan {
 	const static double sensor_height = 0.5;	//[m]
 	const static double max_dist_error = 0.02;	//[m]
 	const static double b = 0.5;	//Wheel distance [m]
+	const static double pole_radius = 0.027;	//[m]
 
 	const static bool use_testing_path = true;
 
@@ -144,27 +145,27 @@ class FakeScan {
 
 			for (int i = 0; i < (angle_max-angle_min)/angle_increment_rad; i++) {
 				if(i == (int)((angle1-angle_min)/angle_increment_rad) && dist1*tan(robot_tilt) < 0.35) {
-					scan.ranges.push_back(dist1 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);	//with error
+					scan.ranges.push_back(dist1 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);	//with error
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole0.1 %f at index %u", scan.ranges.back(), i);
 				}
 				if(i == (int)((angle1-angle_min)/angle_increment_rad)+1 && dist1*tan(robot_tilt) < 0.35) {
-					scan.ranges.push_back(dist1 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);
+					scan.ranges.push_back(dist1 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole0.2 %f at index %u", scan.ranges.back(), i);
 				}
 				if(i == (int)((angle2-angle_min)/angle_increment_rad) && dist2*tan(robot_tilt) < 0.35) {
-					scan.ranges.push_back(dist2 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);
+					scan.ranges.push_back(dist2 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed %f at index %u", scan.ranges.back(), i);	
 				}
 				if(i == (int)((angle3-angle_min)/angle_increment_rad) && dist3*tan(robot_tilt) < 0.35) {
-					scan.ranges.push_back(dist3 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);
+					scan.ranges.push_back(dist3 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed %f at index %u", scan.ranges.back(), i);	
 				}
 				if(i == (int)((angle4-angle_min)/angle_increment_rad) && dist4*tan(robot_tilt) < 0.35) {
-					scan.ranges.push_back(dist4 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error);
+					scan.ranges.push_back(dist4 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole3 %f at index %u", scan.ranges.back(), i);	
 				}
@@ -204,7 +205,7 @@ class FakeScan {
 		pub_scan = n.advertise<sensor_msgs::LaserScan>("/scan",1000);
 		pub_ref_pose = n.advertise<geometry_msgs::PoseStamped>("ref_pose",1000);
 		pub_odom = n.advertise<nav_msgs::Odometry>("/odom",1000);
-		sub_vel = n.subscribe("velocity",1000, &FakeScan::Callback, this);
+		sub_vel = n.subscribe("cmd_vel",1000, &FakeScan::Callback, this);
  		//starting pose (has to be set appropriately, please leave as is)
  		x=1.5;
  		y=2;

@@ -32,6 +32,10 @@ add_executable(intensity_test src/intensity_test.cpp)
 target_link_libraries(intensity_test ${catkin_LIBRARIES})
 add_dependencies(intensity_test intensity_test_gencpp)
 
+add_executable(laser_angle src/laser_angle.cpp)
+target_link_libraries(laser_angle ${catkin_LIBRARIES})
+add_dependencies(laser_angle laser_angle_gencpp)
+
 ## Declare a catkin package
 catkin_package()
 

@@ -21,6 +21,7 @@ class Loc {
 	ros::Publisher pub_pole_;
 
 	static const double b = 0.5;	//wheel distance of robot
+	static const double pole_radius = 0.027;	//radius of reflective poles
 	sensor_msgs::LaserScan scan_;
 	nav_msgs::Odometry odom_;
 	std::vector<Pole> poles_;
