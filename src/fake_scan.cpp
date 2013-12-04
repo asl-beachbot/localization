@@ -24,25 +24,25 @@ class FakeScan {
 	double y;
 	double theta;
  	//pole coordinates
-	const static double xp1 = 0;
-	const static double yp1 = 0;
-	const static double xp2 = 10;
-	const static double yp2 = 0;
-	const static double xp3 = 10;
-	const static double yp3 = 10;
-	const static double xp4 = 0;
-	const static double yp4 = 10;
+	double xp1;
+	double yp1;
+	double xp2;
+	double yp2;
+	double xp3;
+	double yp3;
+	double xp4;
+	double yp4;
 	//velocities
 	double v;
 	double w;
-	const static double max_pole_tilt = 0/360.0*2*M_PI;	//[rad]
-	const static double max_robot_tilt = 10/360.0*2*M_PI;	//[rad]
-	const static double sensor_height = 0.5;	//[m]
-	const static double max_dist_error = 0.02;	//[m]
-	const static double b = 0.5;	//Wheel distance [m]
-	const static double pole_radius = 0.027;	//[m]
+	double max_pole_tilt;	//[rad]
+	double max_robot_tilt;	//[rad]
+	double sensor_height;	//[m]
+	double max_dist_error;	//[m]
+	double b;	//Wheel distance [m]
+	double pole_radius;	//[m]
 
-	const static bool use_testing_path = true;
+	bool use_testing_path;
 
 	ros::NodeHandle n;
 	ros::Publisher pub_scan;
@@ -212,6 +212,23 @@ class FakeScan {
  		theta = 0;
  		v=0;
  		w=0;
+ 		//read config file
+ 		if (ros::param::get("xp1", xp1));	
+		if (ros::param::get("yp1", yp1));	
+		if (ros::param::get("xp2", xp2));	
+		if (ros::param::get("yp2", yp2));	
+		if (ros::param::get("xp3", xp3));	
+		if (ros::param::get("yp3", yp3));	
+		if (ros::param::get("xp4", xp4));	
+		if (ros::param::get("yp4", yp4));	
+		if (ros::param::get("max_pole_tilt", max_pole_tilt)) max_pole_tilt *= 2*M_PI/360.0;
+		if (ros::param::get("max_robot_tilt", max_robot_tilt)) max_robot_tilt *= 2*M_PI/360.0;
+		if (ros::param::get("sensor_height", sensor_height));
+		if (ros::param::get("max_dist_error", max_dist_error));
+		if (ros::param::get("b", b));
+		if (ros::param::get("pole_radius", pole_radius));
+		if (ros::param::get("use_testing_path", use_testing_path));
+
  		GenerateScan();
  	}
 };

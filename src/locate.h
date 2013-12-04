@@ -20,15 +20,15 @@ class Loc {
 	ros::Publisher pub_pose_;
 	ros::Publisher pub_pole_;
 
-	static const double b = 0.5;	//wheel distance of robot
-	static const double pole_radius = 0.027;	//radius of reflective poles
+	double b;	//wheel distance of robot
+	double pole_radius;	//radius of reflective poles
+	bool using_pioneer_;	//if using pioneer for testing
 	sensor_msgs::LaserScan scan_;
 	nav_msgs::Odometry odom_;
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseWithCovarianceStamped pose_;
 	geometry_msgs::Pose initial_pose_;
 	bool initiation_;
-	bool using_pioneer_;
 	ros::Time current_time_;
 
 	void NormalizeAngle(double& angle);

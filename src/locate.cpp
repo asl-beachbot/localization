@@ -3,7 +3,22 @@
 
 Loc::Loc() {
 	ROS_INFO("Started localization node");
-	using_pioneer_ = false;	//if using pioneer for testing
+	//read config from file
+	if (ros::param::get("b", b));	//wheel distance of robot
+	else {
+		b = 0.5;
+		ROS_ERROR("Didn't find config for b");
+	}
+	if (ros::param::get("pole_radius", pole_radius)) ;	//wheel distance of robot
+	else {
+		pole_radius = 0.027;
+		ROS_ERROR("Didn't find config for pole_radius");
+	}
+	if (ros::param::get("using_pioneer", using_pioneer_));	//wheel distance of robot
+	else {
+		using_pioneer_ = false;
+		ROS_ERROR("Didn't find config for using_pioneer_");
+	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
 	if(using_pioneer_) sub_odom_ = n_.subscribe("/pose",1000, &Loc::OdomCallback, this);
 	else sub_odom_ = n_.subscribe("/odom",1000, &Loc::OdomCallback, this);

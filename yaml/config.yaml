@@ -1,0 +1,18 @@
+using_pioneer: false
+use_testing_path: true
+
+pole_radius: 0.027
+#distance of back wheels from each other
+b: 0.5 
+xp1: 0.0
+yp1: 0.0
+xp2: 10.0
+yp2: 0.0
+xp3: 10.0
+yp3: 10.0
+xp4: 0.0
+yp4: 10.0
+max_pole_tilt: 0.0
+max_robot_tilt: 10.0
+max_dist_error: 0.02
+sensor_height: 0.5
