@@ -7,8 +7,8 @@
 #include "tf/transform_datatypes.h"
 #include <cmath>
 
-struct PoleTilt {
-	double angle;
+struct DirectionalTilt {
+	double tilt;
 	double direction;
 };
 
@@ -75,26 +75,28 @@ class FakeScan {
 		const double angle_increment_rad = 0.25/360*2*M_PI;
 		const double angle_min = -3.0/4*M_PI;
 		const double angle_max = 3.0/4*M_PI;
-		std::vector<PoleTilt> pole_tilt;
+		std::vector<DirectionalTilt> pole_tilt;
 
 		for (int i = 0; i < 4; i++) {	//fill pole tilt vector
-			PoleTilt temp_tilt;
-			temp_tilt.angle = ((rand() % 100) / 100.0 *max_pole_tilt);	//angle between [0, max_pole_tilt]
+			DirectionalTilt temp_tilt;
+			temp_tilt.tilt = ((rand() % 100) / 100.0 *max_pole_tilt);	//angle between [0, max_pole_tilt]
 			temp_tilt.direction = ((rand() % 100) / 100.0 *2*M_PI);	//direction in [0,2M_PI]
 			pole_tilt.push_back(temp_tilt);
 		}
-		double tilt_x_shift1 = pole_tilt[0].angle*sensor_height*sin(pole_tilt[0].direction);
-		double tilt_y_shift1 = pole_tilt[0].angle*sensor_height*cos(pole_tilt[0].direction);
-		double tilt_x_shift2 = pole_tilt[1].angle*sensor_height*cos(pole_tilt[1].direction);
-		double tilt_y_shift2 = pole_tilt[1].angle*sensor_height*sin(pole_tilt[1].direction);
-		double tilt_x_shift3 = pole_tilt[2].angle*sensor_height*cos(pole_tilt[2].direction);
-		double tilt_y_shift3 = pole_tilt[2].angle*sensor_height*sin(pole_tilt[2].direction);
-		double tilt_x_shift4 = pole_tilt[3].angle*sensor_height*cos(pole_tilt[3].direction);
-		double tilt_y_shift4 = pole_tilt[3].angle*sensor_height*sin(pole_tilt[3].direction);
+		double tilt_x_shift1 = pole_tilt[0].tilt*sensor_height*sin(pole_tilt[0].direction);
+		double tilt_y_shift1 = pole_tilt[0].tilt*sensor_height*cos(pole_tilt[0].direction);
+		double tilt_x_shift2 = pole_tilt[1].tilt*sensor_height*cos(pole_tilt[1].direction);
+		double tilt_y_shift2 = pole_tilt[1].tilt*sensor_height*sin(pole_tilt[1].direction);
+		double tilt_x_shift3 = pole_tilt[2].tilt*sensor_height*cos(pole_tilt[2].direction);
+		double tilt_y_shift3 = pole_tilt[2].tilt*sensor_height*sin(pole_tilt[2].direction);
+		double tilt_x_shift4 = pole_tilt[3].tilt*sensor_height*cos(pole_tilt[3].direction);
+		double tilt_y_shift4 = pole_tilt[3].tilt*sensor_height*sin(pole_tilt[3].direction);
 
 		while(ros::ok()) {
 			ros::spinOnce();	//get velocity
-			double robot_tilt = 0;
+			DirectionalTilt robot_tilt;
+			robot_tilt.tilt = 0;
+			robot_tilt.direction = ((rand() % 100) / 100.0 *2*M_PI);
 			NormalizeAngle(theta);
 			if ((ros::Time::now() - begin).sec > 5) {	//wait for initiation to finish
 				if (use_testing_path) {
@@ -106,7 +108,7 @@ class FakeScan {
 				y += v*sin(theta)*1/25;
 				theta += w/2*1/25;
 				//constant robot tilt in beginning
-				robot_tilt = ((rand() % 100) / 100.0 *max_robot_tilt);
+				robot_tilt.tilt = ((rand() % 100) / 100.0 *max_robot_tilt);
 			}
 			ROS_INFO("Input pose [%f %f] %f rad", x, y, theta);
 			//calculate angles for poles
@@ -124,12 +126,14 @@ class FakeScan {
 			double dist2 = pow(pow(x-(xp2+tilt_x_shift2),2)+pow(y-(yp2+tilt_y_shift2),2),0.5);
 			double dist3 = pow(pow(x-(xp3+tilt_x_shift3),2)+pow(y-(yp3+tilt_y_shift3),2),0.5);
 			double dist4 = pow(pow(x-(xp4+tilt_x_shift4),2)+pow(y-(yp4+tilt_y_shift4),2),0.5);
+			ROS_INFO("dist %f",dist1);
 			//adjust distance with robot tilt
 			//ROS_INFO("tilt %f", robot_tilt);
-			dist1 *= 1/cos(robot_tilt);
-			dist2 *= 1/cos(robot_tilt);
-			dist3 *= 1/cos(robot_tilt);
-			dist4 *= 1/cos(robot_tilt);
+			dist1 *= 1/cos(robot_tilt.tilt*cos(0));
+			ROS_INFO("dist %f",dist1);
+			dist2 *= 1/cos(robot_tilt.tilt*cos(robot_tilt.direction-angle1));
+			dist3 *= 1/cos(robot_tilt.tilt*cos(robot_tilt.direction-angle1));
+			dist4 *= 1/cos(robot_tilt.tilt*cos(robot_tilt.direction-angle1));
 			sensor_msgs::LaserScan scan;
 			scan.header.seq = 1;
 			scan.header.stamp = ros::Time::now();
@@ -144,27 +148,27 @@ class FakeScan {
 			ROS_INFO("pushed pole3 at %f m %f rad", dist4, angle4);*/
 
 			for (int i = 0; i < (angle_max-angle_min)/angle_increment_rad; i++) {
-				if(i == (int)((angle1-angle_min)/angle_increment_rad) && dist1*tan(robot_tilt) < 0.35) {
+				if(i == (int)((angle1-angle_min)/angle_increment_rad) && dist1*tan(robot_tilt.tilt) < 0.35) {
 					scan.ranges.push_back(dist1 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);	//with error
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole0.1 %f at index %u", scan.ranges.back(), i);
 				}
-				if(i == (int)((angle1-angle_min)/angle_increment_rad)+1 && dist1*tan(robot_tilt) < 0.35) {
+				if(i == (int)((angle1-angle_min)/angle_increment_rad)+1 && dist1*tan(robot_tilt.tilt) < 0.35) {
 					scan.ranges.push_back(dist1 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole0.2 %f at index %u", scan.ranges.back(), i);
 				}
-				if(i == (int)((angle2-angle_min)/angle_increment_rad) && dist2*tan(robot_tilt) < 0.35) {
+				if(i == (int)((angle2-angle_min)/angle_increment_rad) && dist2*tan(robot_tilt.tilt) < 0.35) {
 					scan.ranges.push_back(dist2 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed %f at index %u", scan.ranges.back(), i);	
 				}
-				if(i == (int)((angle3-angle_min)/angle_increment_rad) && dist3*tan(robot_tilt) < 0.35) {
+				if(i == (int)((angle3-angle_min)/angle_increment_rad) && dist3*tan(robot_tilt.tilt) < 0.35) {
 					scan.ranges.push_back(dist3 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed %f at index %u", scan.ranges.back(), i);	
 				}
-				if(i == (int)((angle4-angle_min)/angle_increment_rad) && dist4*tan(robot_tilt) < 0.35) {
+				if(i == (int)((angle4-angle_min)/angle_increment_rad) && dist4*tan(robot_tilt.tilt) < 0.35) {
 					scan.ranges.push_back(dist4 + (rand() % 200) / 100.0 *max_dist_error - max_dist_error - pole_radius);
 					scan.intensities.push_back(2000);
 					//ROS_INFO("pushed pole3 %f at index %u", scan.ranges.back(), i);	
