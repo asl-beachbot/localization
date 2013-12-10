@@ -15,12 +15,20 @@ void Loc::DoTheKalman() {
 	//ROS_INFO("covariance %f", covariance(0,0));
 
 	//predict
-	if (odom_.pose.pose.position.x != -2000.0) {
+	if (odom_.pose.pose.position.x != -2000.0 && last_odom_.pose.pose.position.x != -2000.0) {
 		if (using_pioneer_) {
 			const double init_theta = tf::getYaw(initial_pose_.orientation);
-			state[0] = (odom_.pose.pose.position.x * cos(init_theta) - odom_.pose.pose.position.y * sin(init_theta)) +initial_pose_.position.x;
-			state[1] = (odom_.pose.pose.position.x * sin(init_theta) + odom_.pose.pose.position.y * cos(init_theta)) +initial_pose_.position.y;
-			state[2] = init_theta + tf::getYaw(odom_.pose.pose.orientation);
+			const double predicted_theta = tf::getYaw(odom_.pose.pose.orientation);
+			ROS_INFO("predicted_theta %f", predicted_theta);
+			const double x_delta_robot_cs = odom_.pose.pose.position.x - last_odom_.pose.pose.position.x;
+			ROS_INFO("init_theta %f", init_theta);
+			ROS_INFO("x: %f", x_delta_robot_cs);
+			const double y_delta_robot_cs = odom_.pose.pose.position.y - last_odom_.pose.pose.position.y;
+			ROS_INFO("y: %f", y_delta_robot_cs);
+			const double theta_delta_robot_cs = predicted_theta - tf::getYaw(last_odom_.pose.pose.orientation);
+			state[0] += (x_delta_robot_cs * cos(init_theta) - y_delta_robot_cs * sin(init_theta));
+			state[1] += (x_delta_robot_cs * sin(init_theta) + y_delta_robot_cs * cos(init_theta));
+			state[2] += theta_delta_robot_cs;
 			covariance << 
 				odom_.pose.covariance[0], 0, 0,
 				0, odom_.pose.covariance[7], 0, 
@@ -67,6 +75,7 @@ void Loc::DoTheKalman() {
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
 	//reset odometry
+	if (odom_.pose.pose.position.x != -2000.0) last_odom_ = odom_;
 	odom_.pose.pose.position.x = -2000.0;
 	//reset laser
 	scan_.intensities.clear();

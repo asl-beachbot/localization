@@ -1,6 +1,7 @@
 <launch>
 
 	<group ns="localization">
+		<rosparam command="load" file="yaml/config.yaml" />
 		<node pkg="localization" name="locate" type="locate" output="screen"/>
 	</group>
 

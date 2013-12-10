@@ -251,7 +251,7 @@ void Loc::GetPose() {
 	initial_pose_ = pose_.pose.pose;
 	//initiate probability matrix
 	for (int i = 0; i < pose_.pose.covariance.size(); i++) pose_.pose.covariance[i] = 0;
-	pose_.pose.covariance[0] = 0.0;
-	pose_.pose.covariance[7] = 0.0;
-	pose_.pose.covariance[35] = 0.0;
+	pose_.pose.covariance[0] = 0.1;
+	pose_.pose.covariance[7] = 0.1;
+	pose_.pose.covariance[35] = 0.1;
 }

@@ -31,6 +31,15 @@ void Loc::PublishPose() {
 	//ROS_INFO("Success!");
 }
 
+void Loc::PublishTf() {
+	static tf::TransformBroadcaster br;
+	tf::Transform transform;
+	transform.setOrigin( tf::Vector3(pose_.pose.pose.position.x, pose_.pose.pose.position.y, 0.0));
+	geometry_msgs::Quaternion quat = pose_.pose.pose.orientation;
+	transform.setRotation(tf::Quaternion(quat.x, quat.y, quat.z, quat.w));
+	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "laser_frame"));
+}
+
 void Loc::PrintPose() {
 	ROS_INFO("Estimate [%f %f] %f rad\n", pose_.pose.pose.position.x, pose_.pose.pose.position.y, tf::getYaw(pose_.pose.pose.orientation));
 }

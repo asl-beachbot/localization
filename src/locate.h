@@ -5,6 +5,7 @@
 #include "geometry_msgs/PointStamped.h"
 #include "nav_msgs/Odometry.h"
 #include "tf/transform_datatypes.h"
+#include "tf/transform_broadcaster.h"
 #include "pole.cpp"
 #include <Eigen/Dense>
 #include <cmath>
@@ -25,6 +26,7 @@ class Loc {
 	bool using_pioneer_;	//if using pioneer for testing
 	sensor_msgs::LaserScan scan_;
 	nav_msgs::Odometry odom_;
+	nav_msgs::Odometry last_odom_;
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseWithCovarianceStamped pose_;
 	geometry_msgs::Pose initial_pose_;
@@ -36,6 +38,7 @@ class Loc {
 	void InitiatePoles();
 	void PublishPoles();
 	void PublishPose();
+	void PublishTf();
 	std::vector<localization::xy_point> ScanToXY(const std::vector<localization::scan_point> scan);
 	void Locate();
 	void RefreshData();

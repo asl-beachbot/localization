@@ -1,6 +1,7 @@
 <launch>
 
 	<group ns="localization">
+		<rosparam command="load" file="yaml/config.yaml" />
 		<node pkg="localization" name="fake_scan" type="fake_scan" output="screen"/>
 		<node pkg="localization" name="locate" type="locate" output="screen"/>
 		<node pkg="localization" name="error_checker" type="error_checker" output="screen"/>

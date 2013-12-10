@@ -28,6 +28,7 @@ Loc::Loc() {
 	initiation_ = true;	//start with initiation
 	pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 	odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
+	last_odom_.pose.pose.position.x = -2000;
 	StateHandler();
 }
 
@@ -52,6 +53,7 @@ void Loc::Locate() {
 	PrintPose();
 	PublishPoles();
 	PublishPose();
+	PublishTf();
 	loop_rate.sleep();
 }
 

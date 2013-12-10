@@ -126,11 +126,9 @@ class FakeScan {
 			double dist2 = pow(pow(x-(xp2+tilt_x_shift2),2)+pow(y-(yp2+tilt_y_shift2),2),0.5);
 			double dist3 = pow(pow(x-(xp3+tilt_x_shift3),2)+pow(y-(yp3+tilt_y_shift3),2),0.5);
 			double dist4 = pow(pow(x-(xp4+tilt_x_shift4),2)+pow(y-(yp4+tilt_y_shift4),2),0.5);
-			ROS_INFO("dist %f",dist1);
 			//adjust distance with robot tilt
 			//ROS_INFO("tilt %f", robot_tilt);
 			dist1 *= 1/cos(robot_tilt.tilt*cos(0));
-			ROS_INFO("dist %f",dist1);
 			dist2 *= 1/cos(robot_tilt.tilt*cos(robot_tilt.direction-angle1));
 			dist3 *= 1/cos(robot_tilt.tilt*cos(robot_tilt.direction-angle1));
 			dist4 *= 1/cos(robot_tilt.tilt*cos(robot_tilt.direction-angle1));
@@ -141,6 +139,9 @@ class FakeScan {
 			scan.angle_min = angle_min;
 			scan.angle_max = angle_max;
 			scan.angle_increment = angle_increment_rad;
+			scan.scan_time = 0.0399999991059;
+			scan.range_min = 0.00999999977648;
+			scan.range_max = 20.0;
 
 			/*ROS_INFO("pushed pole0 at %f m %f rad", dist1, angle1);
 			ROS_INFO("pushed pole1 at %f m %f rad", dist2, angle2);
