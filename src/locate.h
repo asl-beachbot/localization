@@ -27,9 +27,9 @@ class Loc {
 	sensor_msgs::LaserScan scan_;
 	nav_msgs::Odometry odom_;
 	nav_msgs::Odometry last_odom_;
+	nav_msgs::Odometry initial_odom_;
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseWithCovarianceStamped pose_;
-	geometry_msgs::Pose initial_pose_;
 	bool initiation_;
 	ros::Time current_time_;
 

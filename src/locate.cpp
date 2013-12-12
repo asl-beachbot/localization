@@ -180,6 +180,7 @@ void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {
 void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 	odom_ = odom;
 	odom_.header.stamp = current_time_;
+	if (last_odom_.pose.pose.position.x == -2000) initial_odom_ = odom;
 }
 
 int main(int argc, char **argv) {

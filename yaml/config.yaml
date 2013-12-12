@@ -1,4 +1,4 @@
-using_pioneer: false
+using_pioneer: true
 use_testing_path: true
 
 pole_radius: 0.027
