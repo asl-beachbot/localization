@@ -44,8 +44,8 @@ void Loc::InitiatePoles() {
 		else ROS_WARN("Only found %lu poles. At least 2 needed.", averaged_scan_points.size());
 	}
 	//get first initial pose for kalman filter
-	RefreshData();
 	GetPose();
+	RefreshData();
 	EstimateInvisiblePoles();
 	PrintPose();
 	PublishPoles();

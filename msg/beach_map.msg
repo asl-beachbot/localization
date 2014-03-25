@@ -1,2 +1,2 @@
-geometry_msgs/Point[] poles
-geometry_msgs/Pose basestation
+geometry_msgs/PointStamped[] poles
+geometry_msgs/PoseStamped basestation

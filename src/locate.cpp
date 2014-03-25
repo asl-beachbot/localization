@@ -20,6 +20,7 @@ Loc::Loc() {
 		ROS_ERROR("Didn't find config for using_pioneer_");
 	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
+	state_sub_ = n_.subscribe("/bbcontrol/robot_state",1000, &Loc::StateCallback, this);
 	if(using_pioneer_) sub_odom_ = n_.subscribe("/pose",1000, &Loc::OdomCallback, this);
 	else sub_odom_ = n_.subscribe("/odom",1000, &Loc::OdomCallback, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
@@ -182,6 +183,17 @@ void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 	odom_ = odom;
 	odom_.header.stamp = current_time_;
 	if (last_odom_.pose.pose.position.x == -2000) initial_odom_ = odom;
+}
+
+void Loc::StateCallback(const std_msgs::UInt8 &new_state) {
+	if(!initiation_ && new_state.data == 1) {
+		initiation_ = true; 
+		pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
+		odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
+		last_odom_.pose.pose.position.x = -2000;
+		poles_.clear();
+		StateHandler();
+	}
 }
 
 int main(int argc, char **argv) {

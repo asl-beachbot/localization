@@ -1,5 +1,5 @@
 using_pioneer: false
-use_testing_path: true
+use_testing_path: false
 
 pole_radius: 0.027
 #distance of back wheels from each other

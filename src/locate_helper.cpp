@@ -34,15 +34,15 @@ void Loc::PublishPose() {
 void Loc::PublishMap() {
 	localization::beach_map beach_map;
 	for (int i = 0; i < poles_.size(); i++) {
-		geometry_msgs::Point point;
-		point.x = poles_[i].xy_coords().x;
-		point.y = poles_[i].xy_coords().y;
+		geometry_msgs::PointStamped point;
+		point.point.x = poles_[i].xy_coords().x;
+		point.point.y = poles_[i].xy_coords().y;
 		beach_map.poles.push_back(point);
 	}
-	beach_map.basestation = pose_.pose.pose;
-	double yaw = tf::getYaw(beach_map.basestation.orientation);
-	beach_map.basestation.position.x -= cos(yaw)*1.0;	//translate pose 1m against driving 
-	beach_map.basestation.position.y -= sin(yaw)*1.0;	//direction to get pose of base station
+	beach_map.basestation.pose = pose_.pose.pose;
+	double yaw = tf::getYaw(beach_map.basestation.pose.orientation);
+	beach_map.basestation.pose.position.x -= cos(yaw)*1.0;	//translate pose 1m against driving 
+	beach_map.basestation.pose.position.y -= sin(yaw)*1.0;	//direction to get pose of base station
 	pub_map_.publish(beach_map);
 }
 
