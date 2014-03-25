@@ -50,6 +50,7 @@ void Loc::InitiatePoles() {
 	PrintPose();
 	PublishPoles();
 	PublishPose();
+	PublishMap();
 	loop_rate.sleep();
 }
 

@@ -25,6 +25,7 @@ Loc::Loc() {
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
 	pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
+	pub_map_ = n_.advertise<localization::beach_map>("beach_map",1000,true);
 	initiation_ = true;	//start with initiation
 	pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 	odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
@@ -72,7 +73,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			}
 		}
 		assert(index != -1);
-		poles_[index].update(scans_to_sort[i], current_time_);
+		if (min_dist < 20) poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
 	}
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 		if (poles_[i].time() != current_time_) poles_[i].disappear();
@@ -105,7 +106,7 @@ bool Loc::IsPolePoint(const double &intensity, const double &distance) {
 	if (distance >= 0.5 && distance < 1) comparison_intensity = (1850-1050)/(1-0.326)*(distance-0.326)+1050;
 	if (distance >= 1 && distance < 3.627) comparison_intensity = (1475-1850)/(3.627-1)*(distance-1)+1850;
 	if (distance >= 3.627 && distance <= 8) comparison_intensity = (1275-1475)/(5.597-3.627)*(distance-3.627)+1475;
-	if (distance > 8) comparison_intensity = 1900;	//mostly in because of fake_scan
+	if (distance > 8) comparison_intensity = 1031;	//mostly in because of fake_scan
 	if (intensity > comparison_intensity) return true;
 	else return false;
 }
@@ -147,8 +148,8 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan) {
 					if(std::find(already_processed.begin(), already_processed.end(), j) != already_processed.end());
 					else {
 						//check if close enough
-						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.5
-							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 0.5) {
+						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.1
+							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 0.1) {
 							ppp++;
 							already_processed.push_back(j);
 							target.back().angle += scan->at(j).angle;

@@ -2,8 +2,10 @@
 #include "sensor_msgs/LaserScan.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
 #include "nav_msgs/Odometry.h"
+#include "localization/beach_map.h"
 #include "tf/transform_datatypes.h"
 #include "tf/transform_broadcaster.h"
 #include "pole.cpp"
@@ -20,6 +22,7 @@ class Loc {
 	ros::Subscriber sub_odom_;
 	ros::Publisher pub_pose_;
 	ros::Publisher pub_pole_;
+	ros::Publisher pub_map_;
 
 	double b;	//wheel distance of robot
 	double pole_radius;	//radius of reflective poles
@@ -38,6 +41,7 @@ class Loc {
 	void InitiatePoles();
 	void PublishPoles();
 	void PublishPose();
+	void PublishMap();
 	void PublishTf();
 	std::vector<localization::xy_point> ScanToXY(const std::vector<localization::scan_point> scan);
 	void Locate();
