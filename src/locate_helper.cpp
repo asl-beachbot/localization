@@ -56,7 +56,7 @@ void Loc::PublishTf() {
 }
 
 void Loc::PrintPose() {
-	ROS_INFO("Estimate [%f %f] %f rad\n", pose_.pose.pose.position.x, pose_.pose.pose.position.y, tf::getYaw(pose_.pose.pose.orientation));
+	//ROS_INFO("Estimate [%f %f] %f rad\n", pose_.pose.pose.position.x, pose_.pose.pose.position.y, tf::getYaw(pose_.pose.pose.orientation));
 }
 
 void Loc::PrintPoleScanData() {
@@ -71,5 +71,5 @@ void Loc::RefreshData() {
 	std::vector<localization::scan_point> locate_scans;	//TODO: put most of the following stuff in callback
 	ExtractPoleScans(&locate_scans);	//get relevant scan points
 	UpdatePoles(locate_scans);		//assign scans to respective poles
-	if (locate_scans.size() == 0) ROS_WARN("Not seeing any poles");
+	//if (locate_scans.size() == 0) ROS_WARN("Not seeing any poles");
 }

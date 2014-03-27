@@ -37,10 +37,10 @@ Loc::Loc() {
 void Loc::StateHandler() {	//runs either initiation or localization
 	while (ros::ok()) {
 		if (initiation_) {
-			ROS_INFO("started initiation");
+			ROS_INFO("Started pole mapping");
 			while (initiation_ && ros::ok()) InitiatePoles();
 		}
-		ROS_INFO("started localization");
+		ROS_INFO("Started localization");
 		if (!initiation_) {
 			while (!initiation_ && ros::ok()) Locate();
 		}
@@ -79,7 +79,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 		if (poles_[i].time() != current_time_) poles_[i].disappear();
 	}
-	PrintPoleScanData();
+	//PrintPoleScanData();
 }
 
 
@@ -185,8 +185,8 @@ void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 	if (last_odom_.pose.pose.position.x == -2000) initial_odom_ = odom;
 }
 
-void Loc::StateCallback(const std_msgs::UInt8 &new_state) {
-	if(!initiation_ && new_state.data == 1) {
+void Loc::StateCallback(const bbcontrol::State &new_state) {
+	if(!initiation_ && new_state.state == 1) {
 		initiation_ = true; 
 		pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 		odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data

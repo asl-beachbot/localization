@@ -110,7 +110,7 @@ class FakeScan {
 				//constant robot tilt in beginning
 				robot_tilt.tilt = ((rand() % 100) / 100.0 *max_robot_tilt);
 			}
-			ROS_INFO("Input pose [%f %f] %f rad", x, y, theta);
+			//ROS_INFO("Input pose [%f %f] %f rad", x, y, theta);
 			//calculate angles for poles
 			double angle1 = atan2((y-(yp1+tilt_y_shift1)),(x-(xp1+tilt_x_shift1)))+3.1415927-theta;
 			double angle2 = atan2((y-(yp2+tilt_y_shift2)),(x-(xp2+tilt_x_shift2)))+3.1415927-theta;

@@ -20,12 +20,12 @@ void Loc::DoTheKalman() {
 			const double init_theta = tf::getYaw(initial_odom_.pose.pose.orientation);
 			const double predicted_theta = tf::getYaw(odom_.pose.pose.orientation);
 			const double x_delta_robot_cs = odom_.pose.pose.position.x - last_odom_.pose.pose.position.x;
-			ROS_INFO("init_theta %f", init_theta);
-			ROS_INFO("x: %f", x_delta_robot_cs);
+			//ROS_INFO("init_theta %f", init_theta);
+			//ROS_INFO("x: %f", x_delta_robot_cs);
 			const double y_delta_robot_cs = odom_.pose.pose.position.y - last_odom_.pose.pose.position.y;
-			ROS_INFO("y: %f", y_delta_robot_cs);
+			//ROS_INFO("y: %f", y_delta_robot_cs);
 			const double theta_delta_robot_cs = predicted_theta - tf::getYaw(last_odom_.pose.pose.orientation);
-			ROS_INFO("predicted_theta %f", theta_delta_robot_cs);
+			//ROS_INFO("predicted_theta %f", theta_delta_robot_cs);
 			state[0] += (x_delta_robot_cs * cos(init_theta) + y_delta_robot_cs * sin(init_theta));
 			state[1] += -(x_delta_robot_cs * sin(init_theta) + y_delta_robot_cs * cos(init_theta));
 			state[2] += theta_delta_robot_cs;
@@ -41,7 +41,7 @@ void Loc::DoTheKalman() {
 			Eigen::MatrixXd f_u = InputJacobi();
 			covariance += f_u*Q()*f_u.transpose();
 		}
-		ROS_INFO("predicted: [%f %f] %f", state[0], state[1], state[2]);
+		//ROS_INFO("predicted: [%f %f] %f", state[0], state[1], state[2]);
 	}
 	else {
 		covariance <<

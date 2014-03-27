@@ -28,13 +28,13 @@ void Loc::InitiatePoles() {
 		}
 		MinimizeScans(&averaged_scan_points);		//average over all measurements
 		for (int i = 0; i < averaged_scan_points.size(); i++) {	
-			ROS_INFO("pole (polar) at %f m %f rad", averaged_scan_points[i].distance, averaged_scan_points[i].angle);
+			//ROS_INFO("pole (polar) at %f m %f rad", averaged_scan_points[i].distance, averaged_scan_points[i].angle);
 			//if (i == 0) ROS_INFO("error %f m",averaged_scan_points[i].distance-6.666667);		//check distance errors
 			//if (i == 1) ROS_INFO("error %f m",averaged_scan_points[i].distance-8.91667);
 		}
 		if (averaged_scan_points.size() > 1) {
 			std::vector<localization::xy_point> xy_poles = ScanToXY(averaged_scan_points);
-			for (int i = 0; i < xy_poles.size(); i++) ROS_INFO("pole (kart.) at [%f %f]", xy_poles[i].x, xy_poles[i].y);	//print poles for debugging
+			//for (int i = 0; i < xy_poles.size(); i++) ROS_INFO("pole (kart.) at [%f %f]", xy_poles[i].x, xy_poles[i].y);	//print poles for debugging
 			for (int i = 0; i < averaged_scan_points.size(); i++) {	//fill pole vector
 				poles_.push_back(Pole(xy_poles[i], averaged_scan_points[i], ros::Time::now(), i));
 			}
@@ -130,8 +130,8 @@ void Loc::CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_ms
   //bot orientation for possible points
   double theta1_circle = M_PI - a_ang + atan2(y1_circle-yp1,x1_circle-xp1);
   double theta2_circle = M_PI - a_ang + atan2(y2_circle-yp1,x2_circle-xp1);
-  ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
-  ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
+  //ROS_INFO("P1C [%f %f] %f", x1_circle, y1_circle, theta1_circle);
+  //ROS_INFO("P2C [%f %f] %f", x2_circle, y2_circle, theta2_circle);
 
   if (pose_.pose.pose.position.x != -2000) {
   	//////////////////Newton Method////////////////////////
@@ -217,7 +217,7 @@ void Loc::CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_ms
   }
 
   //print pose 
-  ROS_INFO("From poles %d,%d: [%f %f] %f rad", pole1.i(), pole2.i(), temp_pose.position.x, temp_pose.position.y, tf::getYaw(temp_pose.orientation));
+  //ROS_INFO("From poles %d,%d: [%f %f] %f rad", pole1.i(), pole2.i(), temp_pose.position.x, temp_pose.position.y, tf::getYaw(temp_pose.orientation));
   pose_vector->push_back(temp_pose);
 }
 

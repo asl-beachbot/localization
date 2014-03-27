@@ -4,7 +4,7 @@
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
-#include "std_msgs/UInt8.h"
+#include "bbcontrol/State.h"
 #include "nav_msgs/Odometry.h"
 #include "localization/beach_map.h"
 #include "tf/transform_datatypes.h"
@@ -59,7 +59,7 @@ class Loc {
 	void MinimizeScans(std::vector<localization::scan_point> *scan);
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
 	void OdomCallback(const nav_msgs::Odometry &odom);
-	void StateCallback(const std_msgs::UInt8 &new_state);
+	void StateCallback(const bbcontrol::State &new_state);
 	//Kalman functions
 	void DoTheKalman();
 	Eigen::Vector3d PredictPositionDelta();
