@@ -26,13 +26,13 @@ void Loc::DoTheKalman() {
 				+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(last_theta);
 			//ROS_INFO("init_odom_theta %f", init_odom_theta);
 			//ROS_INFO("x: %f", odom_.pose.pose.position.x);
-			const double y_delta_robot_cs = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * cos(last_theta)
-				+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(last_theta);
+			const double y_delta_robot_cs = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * sin(-last_theta)
+				+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * cos(last_theta);
 			//ROS_INFO("y: %f", odom_.pose.pose.position.y);
-			const double theta_delta_robot_cs = predicted_theta - tf::getYaw(last_odom_.pose.pose.orientation);
+			const double theta_delta_robot_cs = predicted_theta - last_theta;
 			//ROS_INFO("predicted_theta %f", predicted_theta);
 			state[0] += (x_delta_robot_cs * cos(current_theta) + y_delta_robot_cs * sin(current_theta));
-			state[1] += -(x_delta_robot_cs * sin(current_theta) + y_delta_robot_cs * cos(current_theta));
+			state[1] += -(x_delta_robot_cs * sin(-current_theta) + y_delta_robot_cs * cos(current_theta));
 			state[2] += theta_delta_robot_cs;
 			/*state[0] += (x_delta_robot_cs * cos(predicted_theta-init_odom_theta+init_theta) 
 				+ y_delta_robot_cs * sin(predicted_theta-init_odom_theta+init_theta));

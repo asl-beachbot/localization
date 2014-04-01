@@ -52,7 +52,7 @@ void Loc::PublishTf() {
 	transform.setOrigin( tf::Vector3(pose_.pose.pose.position.x, pose_.pose.pose.position.y, 0.0));
 	geometry_msgs::Quaternion quat = pose_.pose.pose.orientation;
 	transform.setRotation(tf::Quaternion(quat.x, quat.y, quat.z, quat.w));
-	//br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "robot_frame"));
+	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "robot_frame"));
 	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "laser_frame"));
 }
 
