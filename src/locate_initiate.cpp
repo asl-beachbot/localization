@@ -45,6 +45,8 @@ void Loc::InitiatePoles() {
 	}
 	//get first initial pose for kalman filter
 	GetPose();
+	initial_pose_.pose = pose_.pose.pose;
+	initial_pose_.header = pose_.header;
 	RefreshData();
 	EstimateInvisiblePoles();
 	PrintPose();
@@ -198,8 +200,8 @@ void Loc::CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_ms
   }
   else {	//no Newton if first time
   	//check which pose is the correct one 
-  	const bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 0.1);
-  	const bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 0.1);
+  	const bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 1);
+  	const bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 1);
   	assert(first || second);
   	NormalizeAngle(theta1_circle);
   	NormalizeAngle(theta2_circle);
@@ -226,7 +228,7 @@ void Loc::GetPose() {
 	for (int i = 0; i < poles_.size(); i++) {		//loop over poles
 		if (!poles_[i].visible()) continue;
 		int j = i+1;
-		while (!poles_[j].visible() && j < poles_.size()) j++;
+		while (!poles_[j].visible() && j < poles_.size() && ros::ok()) j++;
 		if (j > poles_.size()-1) break;
 		CalcPose(poles_[i], poles_[j], &pose_vector);
 		i = j;

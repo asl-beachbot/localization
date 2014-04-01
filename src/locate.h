@@ -35,6 +35,7 @@ class Loc {
 	nav_msgs::Odometry initial_odom_;
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseWithCovarianceStamped pose_;
+	geometry_msgs::PoseStamped initial_pose_;
 	bool initiation_;
 	ros::Time current_time_;
 

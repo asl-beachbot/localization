@@ -17,22 +17,36 @@ void Loc::DoTheKalman() {
 	//predict
 	if (odom_.pose.pose.position.x != -2000.0 && last_odom_.pose.pose.position.x != -2000.0) {
 		if (using_pioneer_) {
-			const double init_theta = tf::getYaw(initial_odom_.pose.pose.orientation);
+			const double init_odom_theta = tf::getYaw(initial_odom_.pose.pose.orientation);
 			const double predicted_theta = tf::getYaw(odom_.pose.pose.orientation);
-			const double x_delta_robot_cs = odom_.pose.pose.position.x - last_odom_.pose.pose.position.x;
-			//ROS_INFO("init_theta %f", init_theta);
-			//ROS_INFO("x: %f", x_delta_robot_cs);
-			const double y_delta_robot_cs = odom_.pose.pose.position.y - last_odom_.pose.pose.position.y;
-			//ROS_INFO("y: %f", y_delta_robot_cs);
+			const double last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
+			const double init_theta = tf::getYaw(initial_pose_.pose.orientation);
+			const double current_theta = tf::getYaw(pose_.pose.pose.orientation);
+			const double x_delta_robot_cs = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(last_theta)
+				+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(last_theta);
+			//ROS_INFO("init_odom_theta %f", init_odom_theta);
+			//ROS_INFO("x: %f", odom_.pose.pose.position.x);
+			const double y_delta_robot_cs = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * cos(last_theta)
+				+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(last_theta);
+			//ROS_INFO("y: %f", odom_.pose.pose.position.y);
 			const double theta_delta_robot_cs = predicted_theta - tf::getYaw(last_odom_.pose.pose.orientation);
-			//ROS_INFO("predicted_theta %f", theta_delta_robot_cs);
-			state[0] += (x_delta_robot_cs * cos(init_theta) + y_delta_robot_cs * sin(init_theta));
-			state[1] += -(x_delta_robot_cs * sin(init_theta) + y_delta_robot_cs * cos(init_theta));
+			//ROS_INFO("predicted_theta %f", predicted_theta);
+			state[0] += (x_delta_robot_cs * cos(current_theta) + y_delta_robot_cs * sin(current_theta));
+			state[1] += -(x_delta_robot_cs * sin(current_theta) + y_delta_robot_cs * cos(current_theta));
 			state[2] += theta_delta_robot_cs;
-			covariance << 
+			/*state[0] += (x_delta_robot_cs * cos(predicted_theta-init_odom_theta+init_theta) 
+				+ y_delta_robot_cs * sin(predicted_theta-init_odom_theta+init_theta));
+			state[1] += -(x_delta_robot_cs * sin(predicted_theta-init_odom_theta+init_theta) 
+				+ y_delta_robot_cs * cos(predicted_theta-init_odom_theta+init_theta));
+			state[2] += theta_delta_robot_cs;*/
+			/*covariance << 
 				odom_.pose.covariance[0], 0, 0,
 				0, odom_.pose.covariance[7], 0, 
-				0, 0, odom_.pose.covariance[35];
+				0, 0, odom_.pose.covariance[35];*/
+			covariance << 
+				0.1, 0, 0,
+				0, 0.1, 0, 
+				0, 0, 0.1;
 		}
 		else {	
 			state += PredictPositionDelta();	//position delta resulting from odometry prediction

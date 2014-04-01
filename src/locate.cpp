@@ -6,7 +6,7 @@ Loc::Loc() {
 	//read config from file
 	if (ros::param::get("b", b));	//wheel distance of robot
 	else {
-		b = 0.5;
+		b = 0.264;
 		ROS_ERROR("Didn't find config for b");
 	}
 	if (ros::param::get("pole_radius", pole_radius)) ;	//wheel distance of robot
@@ -21,8 +21,8 @@ Loc::Loc() {
 	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
 	state_sub_ = n_.subscribe("/bbcontrol/robot_state",1000, &Loc::StateCallback, this);
-	if(using_pioneer_) sub_odom_ = n_.subscribe("/pose",1000, &Loc::OdomCallback, this);
-	else sub_odom_ = n_.subscribe("/odom",1000, &Loc::OdomCallback, this);
+	if(using_pioneer_) sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
+	else sub_odom_ = n_.subscribe("/odom",1, &Loc::OdomCallback, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
 	pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
@@ -104,10 +104,10 @@ void Loc::EstimateInvisiblePoles() {
 bool Loc::IsPolePoint(const double &intensity, const double &distance) {
 	double comparison_intensity = -1;
 	if (distance < 0.5) return false;
-	if (distance >= 0.5 && distance < 1) comparison_intensity = (1850-1050)/(1-0.326)*(distance-0.326)+1050;
-	if (distance >= 1 && distance < 3.627) comparison_intensity = (1475-1850)/(3.627-1)*(distance-1)+1850;
-	if (distance >= 3.627 && distance <= 8) comparison_intensity = (1275-1475)/(5.597-3.627)*(distance-3.627)+1475;
-	if (distance > 8) comparison_intensity = 1031;	//mostly in because of fake_scan
+	if (distance >= 0.5 && distance < 1) comparison_intensity = (1750-950)/(1-0.326)*(distance-0.326)+950;
+	if (distance >= 1 && distance < 3.627) comparison_intensity = (1375-1750)/(3.627-1)*(distance-1)+1750;
+	if (distance >= 3.627 && distance <= 8) comparison_intensity = (1175-1375)/(5.597-3.627)*(distance-3.627)+1375;
+	if (distance > 8) comparison_intensity = 931;	//mostly in because of fake_scan
 	if (intensity > comparison_intensity) return true;
 	else return false;
 }
@@ -116,7 +116,6 @@ bool Loc::IsPolePoint(const double &intensity, const double &distance) {
 void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points) {	
 	scan_pole_points->clear();	//clear old scan points
 	for (int i = 0; i < scan_.intensities.size(); i++) {
-		//TODO: some kind of clever function for intensities
 		if (IsPolePoint(scan_.intensities[i], scan_.ranges[i])) {
 			localization::scan_point temp;
 			temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
@@ -182,12 +181,18 @@ void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {
 void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 	odom_ = odom;
 	odom_.header.stamp = current_time_;
-	if (last_odom_.pose.pose.position.x == -2000) initial_odom_ = odom;
+	if (last_odom_.pose.pose.position.x == -2000) {
+		initial_odom_ = odom;
+		/*ROS_INFO("Initial odom pose: [%f %f] %f", 
+			initial_odom_.pose.pose.position.x, initial_odom_.pose.pose.position.x, 
+			tf::getYaw(initial_odom_.pose.pose.orientation));*/
+	}
 }
 
 void Loc::StateCallback(const bbcontrol::State &new_state) {
 	if(!initiation_ && new_state.state == 1) {
 		initiation_ = true; 
+		//ROS_ERROR("initiation for localization commented out");
 		pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 		odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
 		last_odom_.pose.pose.position.x = -2000;
