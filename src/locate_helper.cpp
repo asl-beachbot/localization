@@ -74,3 +74,9 @@ void Loc::RefreshData() {
 	UpdatePoles(locate_scans);		//assign scans to respective poles
 	//if (locate_scans.size() == 0) ROS_WARN("Not seeing any poles");
 }
+
+void Loc::SetInit(const bool &init) {
+	initiation_ = init;
+	if (init) ROS_INFO("Started pole initialization");
+	else ROS_INFO("Started localization");
+}

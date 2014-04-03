@@ -21,13 +21,12 @@ Loc::Loc() {
 	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
 	state_sub_ = n_.subscribe("/bbcontrol/robot_state",1000, &Loc::StateCallback, this);
-	if(using_pioneer_) sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
-	else sub_odom_ = n_.subscribe("/odom",1, &Loc::OdomCallback, this);
+	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
 	pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
 	pub_map_ = n_.advertise<localization::beach_map>("beach_map",1000,true);
-	initiation_ = true;	//start with initiation
+	SetInit(true);	//start with initiation
 	pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 	odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
 	last_odom_.pose.pose.position.x = -2000;
@@ -37,12 +36,17 @@ Loc::Loc() {
 void Loc::StateHandler() {	//runs either initiation or localization
 	while (ros::ok()) {
 		if (initiation_) {
-			ROS_INFO("Started pole mapping");
-			while (initiation_ && ros::ok()) InitiatePoles();
+			if(sub_scan_.getNumPublishers() == 0) {	//wait for laser to publish data
+				ros::Rate scan_rate(1);
+				ROS_WARN("No publisher on topic \"/scan\". Trying again every second...");
+				while(sub_scan_.getNumPublishers() == 0 && ros::ok()) {
+					scan_rate.sleep();
+				}
+			}
+			InitiatePoles();
 		}
-		ROS_INFO("Started localization");
 		if (!initiation_) {
-			while (!initiation_ && ros::ok()) Locate();
+			Locate();
 		}
 	}
 }
@@ -74,7 +78,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			}
 		}
 		assert(index != -1);
-		if (min_dist < 20) poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
+		if (min_dist < 1) poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
 	}
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 		if (poles_[i].time() != current_time_) poles_[i].disappear();
@@ -104,9 +108,9 @@ void Loc::EstimateInvisiblePoles() {
 bool Loc::IsPolePoint(const double &intensity, const double &distance) {
 	double comparison_intensity = -1;
 	if (distance < 0.5) return false;
-	if (distance >= 0.5 && distance < 1) comparison_intensity = (1750-950)/(1-0.326)*(distance-0.326)+950;
-	if (distance >= 1 && distance < 3.627) comparison_intensity = (1375-1750)/(3.627-1)*(distance-1)+1750;
-	if (distance >= 3.627 && distance <= 8) comparison_intensity = (1175-1375)/(5.597-3.627)*(distance-3.627)+1375;
+	if (distance >= 0.5 && distance < 1) comparison_intensity = (1850-1050)/(1-0.326)*(distance-0.326)+1050;
+	if (distance >= 1 && distance < 3.627) comparison_intensity = (1475-1850)/(3.627-1)*(distance-1)+1850;
+	if (distance >= 3.627 && distance <= 8) comparison_intensity = (1275-1475)/(5.597-3.627)*(distance-3.627)+1475;
 	if (distance > 8) comparison_intensity = 931;	//mostly in because of fake_scan
 	if (intensity > comparison_intensity) return true;
 	else return false;
@@ -191,7 +195,7 @@ void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 
 void Loc::StateCallback(const bbcontrol::State &new_state) {
 	if(!initiation_ && new_state.state == 1) {
-		initiation_ = true; 
+		SetInit(true); 
 		//ROS_ERROR("initiation for localization commented out");
 		pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 		odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data

@@ -61,6 +61,7 @@ class Loc {
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
 	void OdomCallback(const nav_msgs::Odometry &odom);
 	void StateCallback(const bbcontrol::State &new_state);
+	void SetInit(const bool &init);
 	//Kalman functions
 	void DoTheKalman();
 	Eigen::Vector3d PredictPositionDelta();

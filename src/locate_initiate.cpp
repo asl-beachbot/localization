@@ -8,6 +8,11 @@ void Loc::InitiatePoles() {
 	double init_duration = 5;
 	while ((ros::Time::now()-begin).sec < init_duration && ros::ok()) {	//gather data for 5 seconds
 		ros::spinOnce();	//get one scan
+		if (std::abs(odom_.twist.twist.linear.x) > 0.01 || std::abs(odom_.twist.twist.angular.z) > 0.02) {
+			//Reset initialization if robot move is detected
+			ROS_WARN("Robot moved! Restarting Initialization.");
+			StateHandler();
+		}
 		std::vector<localization::scan_point> temp_scan_points;
 		ExtractPoleScans(&temp_scan_points);	//extract relevant poles
 		extracted_scan_points.push_back(temp_scan_points);	//save them
@@ -39,7 +44,7 @@ void Loc::InitiatePoles() {
 				poles_.push_back(Pole(xy_poles[i], averaged_scan_points[i], ros::Time::now(), i));
 			}
 			PublishPoles();
-			initiation_ = false;
+			SetInit(false);
 		}
 		else ROS_WARN("Only found %lu poles. At least 2 needed.", averaged_scan_points.size());
 	}

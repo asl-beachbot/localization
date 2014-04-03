@@ -15,7 +15,7 @@ void Callback(const sensor_msgs::LaserScan &scan) {
 		if (distance >= 0.5 && distance < 1) comparison_intensity = (1850-1050)/(1-0.326)*(distance-0.326)+1050;
 		if (distance >= 1 && distance < 3.627) comparison_intensity = (1475-1850)/(3.627-1)*(distance-1)+1850;
 		if (distance >= 3.627 && distance <= 8) comparison_intensity = (1275-1475)/(5.597-3.627)*(distance-3.627)+1475;
-		if (distance > 8) comparison_intensity = 1031;	//mostly in because of fake_scan
+		if (distance > 8) comparison_intensity = 931;	//mostly in because of fake_scan
 		if (intensity > comparison_intensity) {
 			found_pole = true;
 			pole_distance = distance;
