@@ -4,7 +4,7 @@
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
-#include "bbcontrol/State.h"
+//#include "bbcontrol/State.h"
 #include "nav_msgs/Odometry.h"
 #include "localization/beach_map.h"
 #include "tf/transform_datatypes.h"
@@ -57,10 +57,10 @@ class Loc {
 	void CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector);
 	bool IsPolePoint(const double &intensity, const double &distance);
 	void ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points);
-	void MinimizeScans(std::vector<localization::scan_point> *scan);
+	void MinimizeScans(std::vector<localization::scan_point> *scan, const int &threshold = 1);
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
 	void OdomCallback(const nav_msgs::Odometry &odom);
-	void StateCallback(const bbcontrol::State &new_state);
+	//void StateCallback(const bbcontrol::State &new_state);
 	void SetInit(const bool &init);
 	//Kalman functions
 	void DoTheKalman();

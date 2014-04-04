@@ -20,7 +20,7 @@ Loc::Loc() {
 		ROS_ERROR("Didn't find config for using_pioneer_");
 	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
-	state_sub_ = n_.subscribe("/bbcontrol/robot_state",1000, &Loc::StateCallback, this);
+	//state_sub_ = n_.subscribe("/bbcontrol/robot_state",1000, &Loc::StateCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
@@ -133,7 +133,7 @@ void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_poin
 
 //takes vector of scan points and groupus all scan points that belong to a pole together
 //writes back in the input vector
-void Loc::MinimizeScans(std::vector<localization::scan_point> *scan) {
+void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &threshold) {
 	std::vector<localization::scan_point> target; 
 	std::vector<int> already_processed;
 	//don't run if no poles visible
@@ -166,6 +166,7 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan) {
 				//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
 				target.back().distance /= ppp;
 				target.back().angle /= ppp;
+				if (ppp < threshold) target.pop_back();	//check if more scan points than threshold were gathered
 			}
 			
 		}
@@ -193,7 +194,7 @@ void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 	}
 }
 
-void Loc::StateCallback(const bbcontrol::State &new_state) {
+/*void Loc::StateCallback(const bbcontrol::State &new_state) {
 	if(!initiation_ && new_state.state == 1) {
 		SetInit(true); 
 		//ROS_ERROR("initiation for localization commented out");
@@ -203,7 +204,7 @@ void Loc::StateCallback(const bbcontrol::State &new_state) {
 		poles_.clear();
 		StateHandler();
 	}
-}
+}*/
 
 int main(int argc, char **argv) {
 	ros::init(argc, argv, "localization");

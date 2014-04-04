@@ -137,8 +137,8 @@ Eigen::MatrixXd Loc::InputJacobi() {
 }
 
 Eigen::Matrix2d Loc::Q() {
-	const double k1 = 1;
-	const double k2 = 1;
+	const double k1 = 0.05;
+	const double k2 = 0.05;
 	const double ds = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(tf::getYaw(last_odom_.pose.pose.orientation))
 		+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(tf::getYaw(last_odom_.pose.pose.orientation));
 	const double dth = tf::getYaw(odom_.pose.pose.orientation) - tf::getYaw(last_odom_.pose.pose.orientation);
@@ -180,8 +180,8 @@ Eigen::MatrixXd Loc::EstimateJacobi(const std::vector<Pole> &visible_poles, cons
 Eigen::MatrixXd Loc::ErrorMatrix(const std::vector<Pole> &visible_poles) {
 	Eigen::MatrixXd R = Eigen::MatrixXd::Zero(visible_poles.size()*2,visible_poles.size()*2);
 	for (int i = 0; i < visible_poles.size(); i++) {
-		R(2*i,2*i) = 0.012*0.012;
-		R(2*i+1,2*i+1) = 0.012*0.012;
+		R(2*i,2*i) = 0.05*0.05;
+		R(2*i+1,2*i+1) = 0.05*0.05;
 	}
 	return R;
 }
