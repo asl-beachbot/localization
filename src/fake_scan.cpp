@@ -210,8 +210,8 @@ class FakeScan {
  	FakeScan() {
 		pub_scan = n.advertise<sensor_msgs::LaserScan>("/scan",1000);
 		pub_ref_pose = n.advertise<geometry_msgs::PoseStamped>("ref_pose",1000);
-		pub_odom = n.advertise<nav_msgs::Odometry>("/odom",1000);
-		sub_vel = n.subscribe("cmd_vel",1000, &FakeScan::Callback, this);
+		pub_odom = n.advertise<nav_msgs::Odometry>("/odometry",1000);
+		sub_vel = n.subscribe("/cmd_vel",1000, &FakeScan::Callback, this);
  		//starting pose (has to be set appropriately, please leave as is)
  		x=1.5;
  		y=2;
