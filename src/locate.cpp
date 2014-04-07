@@ -20,8 +20,8 @@ Loc::Loc() {
 		ROS_ERROR("Didn't find config for using_pioneer_");
 	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
-	//state_sub_ = n_.subscribe("/bbcontrol/robot_state",1000, &Loc::StateCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
+	srv_init_ = n_.advertiseService("initialize_localization", &Loc::InitService, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
 	pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
@@ -194,17 +194,27 @@ void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 	}
 }
 
-/*void Loc::StateCallback(const bbcontrol::State &new_state) {
-	if(!initiation_ && new_state.state == 1) {
+bool Loc::InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res) {
+	if(!initiation_ && req.init) {
 		SetInit(true); 
 		//ROS_ERROR("initiation for localization commented out");
-		pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
-		odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
-		last_odom_.pose.pose.position.x = -2000;
-		poles_.clear();
-		StateHandler();
+		ros::Time begin = ros::Time::now();
+		while(initiation_ && ros::ok() && (ros::Time::now() - begin).sec < 15) {
+			pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
+			odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
+			last_odom_.pose.pose.position.x = -2000;
+			poles_.clear();
+			StateHandler();
+		}
+		if ((ros::Time::now() - begin).sec < 15) {
+			ROS_ERROR("Initiation failed for 15 seconds");
+			res.success = false;
+		}
+		else {
+			res.success = true;
+		}
 	}
-}*/
+}
 
 int main(int argc, char **argv) {
 	ros::init(argc, argv, "localization");

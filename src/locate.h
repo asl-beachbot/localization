@@ -4,7 +4,7 @@
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
-//#include "bbcontrol/State.h"
+#include "localization/InitLocalization.h"
 #include "nav_msgs/Odometry.h"
 #include "localization/beach_map.h"
 #include "tf/transform_datatypes.h"
@@ -21,7 +21,7 @@ class Loc {
 	ros::NodeHandle n_;
 	ros::Subscriber sub_scan_;
 	ros::Subscriber sub_odom_;
-	ros::Subscriber state_sub_;
+	ros::ServiceServer srv_init_;
 	ros::Publisher pub_pose_;
 	ros::Publisher pub_pole_;
 	ros::Publisher pub_map_;
@@ -60,7 +60,7 @@ class Loc {
 	void MinimizeScans(std::vector<localization::scan_point> *scan, const int &threshold = 1);
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
 	void OdomCallback(const nav_msgs::Odometry &odom);
-	//void StateCallback(const bbcontrol::State &new_state);
+	bool InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res);
 	void SetInit(const bool &init);
 	//Kalman functions
 	void DoTheKalman();

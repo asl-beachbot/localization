@@ -10,6 +10,7 @@ include_directories(${Eigen_INCLUDE_DIRS})
 
 ## Declare ROS messages and services
 add_message_files(DIRECTORY msg FILES xy_vector.msg scan_vector.msg scan_point.msg xy_point.msg beach_map.msg)
+add_service_files(DIRECTORY srv FILES InitLocalization.srv)
 
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
