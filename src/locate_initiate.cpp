@@ -31,7 +31,7 @@ void Loc::InitiatePoles() {
 				averaged_scan_points.push_back(extracted_scan_points[i][j]);
 			}
 		}
-		MinimizeScans(&averaged_scan_points, 125);		//average over all measurements
+		MinimizeScans(&averaged_scan_points, 1);		//average over all measurements
 		for (int i = 0; i < averaged_scan_points.size(); i++) {	
 			//ROS_INFO("pole (polar) at %f m %f rad", averaged_scan_points[i].distance, averaged_scan_points[i].angle);
 			//if (i == 0) ROS_INFO("error %f m",averaged_scan_points[i].distance-6.666667);		//check distance errors
@@ -84,6 +84,41 @@ std::vector<localization::xy_point> Loc::ScanToXY(const std::vector<localization
 		xy_vector[i].y = -sin(rot_ang)*temp_x + cos(rot_ang)*xy_vector[i].y;
 	}
 	return xy_vector;
+}
+
+void Loc::GetPose() {
+	std::vector<geometry_msgs::Pose> pose_vector;
+	for (int i = 0; i < poles_.size(); i++) {		//loop over poles
+		if (!poles_[i].visible()) continue;
+		int j = i+1;
+		while (!poles_[j].visible() && j < poles_.size() && ros::ok()) j++;
+		if (j > poles_.size()-1) break;
+		CalcPose(poles_[i], poles_[j], &pose_vector);
+		i = j;
+	}
+	double x = 0, y = 0, theta = 0;
+	//ROS_INFO("y: %f", y);
+	for (int i = 0; i < pose_vector.size(); i++) {	//average over all results
+		x += pose_vector[i].position.x;
+		y += pose_vector[i].position.y;
+		//ROS_INFO("y: %f", y);
+		theta += tf::getYaw(pose_vector[i].orientation);
+	}
+	x /= pose_vector.size();
+	y /= pose_vector.size();
+	theta /= pose_vector.size();
+	pose_.pose.pose.position.x = x;
+	pose_.pose.pose.position.y = y;
+	pose_.pose.pose.position.z = 0;
+	pose_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+	pose_.header.seq = 1;
+	pose_.header.stamp = current_time_;
+	pose_.header.frame_id = "fixed_frame";
+	//initiate probability matrix
+	for (int i = 0; i < pose_.pose.covariance.size(); i++) pose_.pose.covariance[i] = 0;
+	pose_.pose.covariance[0] = 0.1;
+	pose_.pose.covariance[7] = 0.1;
+	pose_.pose.covariance[35] = 0.1;
 }
 
 //used to calculate initial position
@@ -228,37 +263,4 @@ void Loc::CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_ms
   pose_vector->push_back(temp_pose);
 }
 
-void Loc::GetPose() {
-	std::vector<geometry_msgs::Pose> pose_vector;
-	for (int i = 0; i < poles_.size(); i++) {		//loop over poles
-		if (!poles_[i].visible()) continue;
-		int j = i+1;
-		while (!poles_[j].visible() && j < poles_.size() && ros::ok()) j++;
-		if (j > poles_.size()-1) break;
-		CalcPose(poles_[i], poles_[j], &pose_vector);
-		i = j;
-	}
-	double x = 0, y = 0, theta = 0;
-	//ROS_INFO("y: %f", y);
-	for (int i = 0; i < pose_vector.size(); i++) {	//average over all results
-		x += pose_vector[i].position.x;
-		y += pose_vector[i].position.y;
-		//ROS_INFO("y: %f", y);
-		theta += tf::getYaw(pose_vector[i].orientation);
-	}
-	x /= pose_vector.size();
-	y /= pose_vector.size();
-	theta /= pose_vector.size();
-	pose_.pose.pose.position.x = x;
-	pose_.pose.pose.position.y = y;
-	pose_.pose.pose.position.z = 0;
-	pose_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
-	pose_.header.seq = 1;
-	pose_.header.stamp = current_time_;
-	pose_.header.frame_id = "fixed_frame";
-	//initiate probability matrix
-	for (int i = 0; i < pose_.pose.covariance.size(); i++) pose_.pose.covariance[i] = 0;
-	pose_.pose.covariance[0] = 0.1;
-	pose_.pose.covariance[7] = 0.1;
-	pose_.pose.covariance[35] = 0.1;
-}
+

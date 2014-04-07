@@ -193,10 +193,11 @@ class FakeScan {
 			odom.header.frame_id = "robot_frame";
 			odom.header.seq = 1;
 			odom.child_frame_id = "robot_frame";
-			odom.twist.twist.linear.x = v + w*b/2;	//speed of right wheel
-			odom.twist.twist.linear.y = v +- w*b/2;	//speed of left wheel
-			odom.pose.pose.position.x = (v + w*b/2)/25;	//distance travelled of right wheel
-			odom.pose.pose.position.y = (v - w*b/2)/25;	//distance travelled of left wheel
+			odom.twist.twist.linear.x = v;	//speed of right wheel
+			odom.twist.twist.angular.z = w;
+			odom.pose.pose.position.x = x;	//distance travelled of right wheel
+			odom.pose.pose.position.y = y;	//distance travelled of left wheel
+			odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
 			pub_odom.publish(odom);
 			pub_ref_pose.publish(ref_pose);
 			pub_scan.publish(scan);

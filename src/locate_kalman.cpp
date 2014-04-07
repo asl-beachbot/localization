@@ -58,7 +58,7 @@ void Loc::DoTheKalman() {
 		}
 		//ROS_INFO("predicted: [%f %f] %f", state[0], state[1], state[2]);
 	}
-	ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
+	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	/*else {
 		covariance <<
 			9999999, 0, 0,
@@ -90,7 +90,7 @@ void Loc::DoTheKalman() {
 	pose_.pose.covariance[0] = covariance(0,0);
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
-	ROS_INFO("cov_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
+	//ROS_INFO("cov_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	//reset odometry
 	if (odom_.pose.pose.position.x != -2000.0) last_odom_ = odom_;
 	odom_.pose.pose.position.x = -2000.0;
@@ -127,7 +127,7 @@ Eigen::MatrixXd Loc::InputJacobi() {
 			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(tf::getYaw(last_odom_.pose.pose.orientation));
 	const double dth = tf::getYaw(odom_.pose.pose.orientation) - tf::getYaw(last_odom_.pose.pose.orientation);
 	const double theta = tf::getYaw(pose_.pose.pose.orientation);
-	ROS_INFO("ds %f dth %f theta %f", ds, dth, theta);
+	//ROS_INFO("ds %f dth %f theta %f", ds, dth, theta);
 	Eigen::MatrixXd f_u(3,2);
 	f_u << 
 		0.5*cos(theta + dth/2)-ds/(2*b)*sin(theta + dth/2), 0.5*cos(theta + dth/2)+ds/(2*b)*sin(theta + dth/2),

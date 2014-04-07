@@ -39,7 +39,7 @@ class IntensityTest {
 	std::string file_path_;
 	std::vector<IntensityStruct> intensity_vector_;
 	const static bool filter_max_intensites_ = true;
-	const static bool save_closest_points_ = false;
+	const static bool save_closest_points_ = true;
 
 	void TestIntensities() {
 		ROS_INFO("Starting intensity test");
@@ -51,6 +51,13 @@ class IntensityTest {
 		ROS_INFO("Entering loop");
 		sensor_msgs::LaserScan dummy_scan;
 		scan_ = dummy_scan;
+		if(sub_.getNumPublishers() == 0) {	//wait for laser to publish data
+			ros::Rate scan_rate(1);
+			ROS_WARN("No publisher on topic \"/scan\". Trying again every second...");
+			while(sub_.getNumPublishers() == 0 && ros::ok()) {
+				scan_rate.sleep();
+			}
+		}
 		while (ros::ok()) {
 			ros::Time temp_time = ros::Time::now();
 			while((ros::Time::now()-temp_time).sec < 1) {	//cache errors for 1 second

@@ -108,11 +108,11 @@ void Loc::EstimateInvisiblePoles() {
 bool Loc::IsPolePoint(const double &intensity, const double &distance) {
 	double comparison_intensity = -1;
 	if (distance < 0.5) return false;
-	if (distance >= 0.5 && distance < 1) comparison_intensity = (1850-1050)/(1-0.326)*(distance-0.326)+1050;
-	if (distance >= 1 && distance < 3.627) comparison_intensity = (1475-1850)/(3.627-1)*(distance-1)+1850;
-	if (distance >= 3.627 && distance <= 8) comparison_intensity = (1275-1475)/(5.597-3.627)*(distance-3.627)+1475;
+	if (distance >= 0.5 && distance < 1) comparison_intensity = (1750-950)/(1-0.326)*(distance-0.326)+950;
+	if (distance >= 1 && distance < 3.627) comparison_intensity = (1375-1750)/(3.627-1)*(distance-1)+1750;
+	if (distance >= 3.627 && distance <= 8) comparison_intensity = (1175-1375)/(5.597-3.627)*(distance-3.627)+1375;
 	if (distance > 8) comparison_intensity = 931;	//mostly in because of fake_scan
-	if (intensity > comparison_intensity) return true;
+	if (intensity > comparison_intensity && intensity < 3000) return true; //intensity <3000 to filter blinding sunlight
 	else return false;
 }
 
