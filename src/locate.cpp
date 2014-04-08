@@ -7,17 +7,17 @@ Loc::Loc() {
 	if (ros::param::get("b", b));	//wheel distance of robot
 	else {
 		b = 0.264;
-		ROS_ERROR("Didn't find config for b");
+		ROS_WARN("Didn't find config for b");
 	}
 	if (ros::param::get("pole_radius", pole_radius)) ;	//wheel distance of robot
 	else {
 		pole_radius = 0.027;
-		ROS_ERROR("Didn't find config for pole_radius");
+		ROS_WARN("Didn't find config for pole_radius");
 	}
 	if (ros::param::get("using_pioneer", using_pioneer_));	//wheel distance of robot
 	else {
 		using_pioneer_ = false;
-		ROS_ERROR("Didn't find config for using_pioneer_");
+		ROS_WARN("Didn't find config for using_pioneer_");
 	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);

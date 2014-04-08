@@ -23,19 +23,23 @@ add_dependencies(locate locate_gencpp)
 
 add_executable(fake_scan src/fake_scan.cpp)
 target_link_libraries(fake_scan ${catkin_LIBRARIES})
-add_dependencies(fake_scan fake_scan_gencpp)
+add_dependencies(fake_scan locate_gencpp)
 
 add_executable(error_checker src/error_checker.cpp)
 target_link_libraries(error_checker ${catkin_LIBRARIES})
-add_dependencies(error_checker error_checker_gencpp)
+add_dependencies(error_checker locate_gencpp)
 
 add_executable(intensity_test src/intensity_test.cpp)
 target_link_libraries(intensity_test ${catkin_LIBRARIES})
-add_dependencies(intensity_test intensity_test_gencpp)
+add_dependencies(intensity_test locate_gencpp)
 
 add_executable(laser_angle src/laser_angle.cpp)
 target_link_libraries(laser_angle ${catkin_LIBRARIES})
-add_dependencies(laser_angle laser_angle_gencpp)
+add_dependencies(laser_angle locate_gencpp)
+
+add_executable(output_simulator src/output_simulator.cpp)
+target_link_libraries(output_simulator ${catkin_LIBRARIES})
+add_dependencies(output_simulator locate_gencpp)
 
 ## Declare a catkin package
 catkin_package()
