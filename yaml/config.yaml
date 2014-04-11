@@ -1,4 +1,4 @@
-using_pioneer: false
+use_odometry: false
 use_testing_path: false
 
 pole_radius: 0.027

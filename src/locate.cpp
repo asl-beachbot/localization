@@ -14,10 +14,10 @@ Loc::Loc() {
 		pole_radius = 0.027;
 		ROS_WARN("Didn't find config for pole_radius");
 	}
-	if (ros::param::get("using_pioneer", using_pioneer_));	//wheel distance of robot
+	if (ros::param::get("use_odometry", use_odometry_));	//wheel distance of robot
 	else {
-		using_pioneer_ = false;
-		ROS_WARN("Didn't find config for using_pioneer_");
+		use_odometry_ = false;
+		ROS_WARN("Didn't find config for use_odometry_");
 	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
