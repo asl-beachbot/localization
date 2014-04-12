@@ -118,8 +118,8 @@ Eigen::MatrixXd Loc::InputJacobi() {
 }
 
 Eigen::Matrix2d Loc::Q() {
-	const double k1 = 0.05;
-	const double k2 = 0.05;
+	const double k1 = 0.07;
+	const double k2 = 0.07;
 	const double ds = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(tf::getYaw(last_odom_.pose.pose.orientation))
 		+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(tf::getYaw(last_odom_.pose.pose.orientation));
 	const double dth = tf::getYaw(odom_.pose.pose.orientation) - tf::getYaw(last_odom_.pose.pose.orientation);

@@ -1,9 +1,10 @@
+#localization settings
 use_odometry: false
 use_testing_path: false
-
 pole_radius: 0.027
-#distance of back wheels from each other
 b: 0.264
+
+#fake scan settings
 xp1: 0.0
 yp1: 0.0
 xp2: 10.0

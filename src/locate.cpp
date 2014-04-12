@@ -78,7 +78,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			}
 		}
 		assert(index != -1);
-		const double omega_max = 1; //max turn speed
+		const double omega_max = 1*1.5; //max turn speed; 1.5 for tolerance
 		if (min_dist < scans_to_sort[i].distance*omega_max/25) poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
 	}
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
@@ -125,6 +125,7 @@ void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_poin
 			localization::scan_point temp;
 			temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
 			temp.angle = (scan_.angle_min+scan_.angle_increment*i);
+			temp.intensity = scan_.intensities[i];
 			//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
 			scan_pole_points->push_back(temp);
 		}
@@ -132,7 +133,7 @@ void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_poin
 	MinimizeScans(scan_pole_points);
 }
 
-//takes vector of scan points and groupus all scan points that belong to a pole together
+//takes vector of scan points and finds closest point of the ones belonging to one pole
 //writes back in the input vector
 void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &threshold) {
 	std::vector<localization::scan_point> target; 
@@ -147,26 +148,28 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 				//loop over remaining poles
 				//check if point is last in vector
 				target.push_back(scan->at(i));
-				int ppp = 1;	//points per pole
+				double max_intensity = 1;	//find closest point in vincinity
+				int ppp = 1;
 				if(i+1 != scan->size()) for (int j = i+1; j < scan->size(); j++) {
 					//check already_processed
 					if(std::find(already_processed.begin(), already_processed.end(), j) != already_processed.end());
 					else {
 						//check if close enough
-						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.1
-							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 0.1) {
+						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.5
+							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 1.5) {
 							ppp++;
-							already_processed.push_back(j);
-							target.back().angle += scan->at(j).angle;
-							target.back().distance += scan->at(j).distance;
+							if (scan->at(j).intensity > max_intensity) {
+								already_processed.push_back(j);
+								target.back().angle = scan->at(j).angle;
+								target.back().distance = scan->at(j).distance;
+								target.back().intensity = scan->at(j).intensity;
+							}
 						}
 					}
 				}
 				already_processed.push_back(i);
 				//average
 				//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
-				target.back().distance /= ppp;
-				target.back().angle /= ppp;
 				if (ppp < threshold) target.pop_back();	//check if more scan points than threshold were gathered
 			}
 			
