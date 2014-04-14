@@ -56,10 +56,11 @@ class OutputSimulator {
 
 	void Move() {
 		const ros::Time now = ros::Time::now();
-		const double time_is_reserved = (begin_-now).sec + (begin_-now).nsec/1000000000.0;
-		x_ = 1*cos(time_is_reserved/1*M_PI)+2;
-		y_ = 1*sin(time_is_reserved/1*M_PI)+2;
-		theta_ = (-cos(time_is_reserved/1*M_PI)+1)*2*M_PI;
+		const double time_is_reserved = (now-begin_).sec + (now-begin_).nsec/1000000000.0;
+		const double omega = 5;
+		x_ = 1*cos(time_is_reserved/omega*M_PI)+2;
+		y_ = 1*sin(time_is_reserved/omega*M_PI)+2;
+		theta_ = time_is_reserved/omega*M_PI+M_PI/2;
 		NormalizeAngle(theta_);
 	}
 
@@ -71,7 +72,7 @@ class OutputSimulator {
 
  	OutputSimulator() {
  		pose_pub_ = n_.advertise<geometry_msgs::PoseStamped>("/localization/bot_pose", 1);
- 		pole_pub_ = n_.advertise<geometry_msgs::PointStamped>("/localization/pole_pos", 1);
+ 		pole_pub_ = n_.advertise<geometry_msgs::PointStamped>("/localization/pole_pos", 4);
  		begin_ = ros::Time::now();
  		if (ros::param::get("xp1", xp1_));	
 		if (ros::param::get("yp1", yp1_));	
@@ -92,6 +93,7 @@ int main(int argc, char **argv) {
 	ros::init(argc, argv, "output_simulator");
 	OutputSimulator *output_simulator = new OutputSimulator();
 	ros::Rate loop_rate(25);
+	ROS_INFO("Generating fictional pose and pole data...");
 	while (ros::ok()) {
 		output_simulator->Step();
 		loop_rate.sleep();

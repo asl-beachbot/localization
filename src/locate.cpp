@@ -97,7 +97,7 @@ void Loc::EstimateInvisiblePoles() {
 			localization::scan_point temp_scan;
 			temp_scan.angle = atan2(dy,dx)+3.1415927-tf::getYaw(pose_.pose.pose.orientation);
 			NormalizeAngle(temp_scan.angle);
-			temp_scan.distance = pow(pow(dx,2)+pow(dy,2),0.5);
+			temp_scan.distance = pow(pow(dx,2)+pow(dy,2),0.5)+pole_radius;
 			poles_[i].update(temp_scan);
 			//ROS_INFO("Changed pole %d to %f m %f rad", i, temp_scan.distance, temp_scan.angle);
 		}
@@ -165,6 +165,7 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 				//average
 				//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
 				target.back().distance /= ppp;
+				target.back().distance += pole_radius;
 				target.back().angle /= ppp;
 				if (ppp < threshold) target.pop_back();	//check if more scan points than threshold were gathered
 			}
