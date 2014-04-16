@@ -71,7 +71,7 @@ void Loc::DoTheKalman() {
 	pose_.pose.covariance[0] = covariance(0,0);
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
-	//ROS_INFO("cov_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
+	ROS_INFO("cov_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	//reset odometry
 	if (odom_.pose.pose.position.x != -2000.0) last_odom_ = odom_;
 	odom_.pose.pose.position.x = -2000.0;
@@ -161,8 +161,8 @@ Eigen::MatrixXd Loc::EstimateJacobi(const std::vector<Pole> &visible_poles, cons
 Eigen::MatrixXd Loc::ErrorMatrix(const std::vector<Pole> &visible_poles) {
 	Eigen::MatrixXd R = Eigen::MatrixXd::Zero(visible_poles.size()*2,visible_poles.size()*2);
 	for (int i = 0; i < visible_poles.size(); i++) {
-		R(2*i,2*i) = 0.05*0.05;
-		R(2*i+1,2*i+1) = 0.05*0.05;
+		R(2*i,2*i) = 0.05;//*0.05;
+		R(2*i+1,2*i+1) = 0.05;//*0.05;
 	}
 	return R;
 }

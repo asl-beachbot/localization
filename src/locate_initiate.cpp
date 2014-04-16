@@ -31,7 +31,7 @@ void Loc::InitiatePoles() {
 				averaged_scan_points.push_back(extracted_scan_points[i][j]);
 			}
 		}
-		MinimizeScans(&averaged_scan_points, 1);		//average over all measurements
+		MinimizeScans(&averaged_scan_points, 25);		//average over all measurements
 		for (int i = 0; i < averaged_scan_points.size(); i++) {	
 			//ROS_INFO("pole (polar) at %f m %f rad", averaged_scan_points[i].distance, averaged_scan_points[i].angle);
 			//if (i == 0) ROS_INFO("error %f m",averaged_scan_points[i].distance-6.666667);		//check distance errors

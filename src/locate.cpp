@@ -78,8 +78,18 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			}
 		}
 		assert(index != -1);
-		const double omega_max = 1*1.5; //max turn speed; 1.5 for tolerance
-		if (min_dist < scans_to_sort[i].distance*omega_max/25) poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
+		min_dist = std::abs(scans_to_sort[i].distance - poles_[index].laser_coords().distance);
+		double min_angle = std::abs(scans_to_sort[i].angle - poles_[index].laser_coords().angle);
+		if (poles_[index].visible()) {
+			if (min_dist < 0.2 && min_angle < 0.1) {
+				poles_[index].update(scans_to_sort[i], current_time_);
+			}
+		}
+		else {//more tolerance if pole wasnt visible
+			if (min_dist < 0.4 && min_angle < 0.2) {
+				poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
+			}
+		}
 	}
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 		if (poles_[i].time() != current_time_) poles_[i].disappear();

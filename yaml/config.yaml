@@ -1,8 +1,8 @@
 #localization settings
 use_odometry: false
-use_testing_path: false
 pole_radius: 0.027
 b: 0.264
+use_testing_path: false
 
 #fake scan settings
 xp1: 0.0
