@@ -7,9 +7,8 @@ void Loc::NormalizeAngle(double& angle) {
 
 void Loc::PublishPoles() {
 	//ROS_INFO("Publishing poles...");
-	int j = 0;
 	for (int i = 0; i < poles_.size(); i++) {
-		//if(poles_[i].visible()) {
+		if(poles_[i].visible()) {
 			geometry_msgs::PointStamped point;
 			point.header.seq = 1;
 			point.header.stamp = current_time_;
@@ -20,10 +19,8 @@ void Loc::PublishPoles() {
 			point.point.y = temp_point.distance * sin(temp_point.angle);
 			point.point.z = 0;
 			pub_pole_.publish(point);
-		//}
-		if (poles_[i].visible()) j++;
+		}
 	}
-	ROS_INFO("seeing %d poles", j);
 	//ROS_INFO("Success!");
 }
 
@@ -35,7 +32,8 @@ void Loc::PublishPose() {
 	temp_pose.pose.orientation = pose_.pose.pose.orientation;
 	temp_pose.header = pose_.header;
 	pub_pose_.publish(temp_pose);
-	//ROS_INFO("delay: %fms", (ros::Time::now()-current_time_).toSec()*1000);
+	ROS_INFO("delay: %fms", (ros::Time::now()-current_time_).toSec()*1000);
+	//ROS_INFO("Success!");
 }
 
 void Loc::PublishMap() {
@@ -76,7 +74,6 @@ void Loc::PrintPoleScanData() {
 void Loc::RefreshData() {
 	std::vector<localization::scan_point> locate_scans;	//TODO: put most of the following stuff in callback
 	ExtractPoleScans(&locate_scans);	//get relevant scan points
-	CorrectMoveError(&locate_scans);	
 	UpdatePoles(locate_scans);		//assign scans to respective poles
 	//if (locate_scans.size() == 0) ROS_WARN("Not seeing any poles");
 }

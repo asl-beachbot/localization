@@ -67,18 +67,10 @@ class OutputSimulator {
 
 	void Move() {
 		const ros::Time now = ros::Time::now();
-<<<<<<< HEAD
-		const double time_is_reserved = (now-begin_).sec + (now-begin_).nsec/1000000000.0;
-		const double omega = 5;
-		x_ = 1*cos(time_is_reserved/omega*M_PI)+2;
-		y_ = 1*sin(time_is_reserved/omega*M_PI)+2;
-		theta_ = time_is_reserved/omega*M_PI+M_PI/2;
-=======
 		const double time_is_reserved = (begin_-now).toSec();
 		x_ = 1*cos(time_is_reserved/1*M_PI)+2;
 		y_ = 1*sin(time_is_reserved/1*M_PI)+2;
 		theta_ = (-cos(time_is_reserved/1*M_PI)+1)*2*M_PI;
->>>>>>> experimental
 		NormalizeAngle(theta_);
 	}
 
@@ -111,7 +103,6 @@ int main(int argc, char **argv) {
 	ros::init(argc, argv, "output_simulator");
 	OutputSimulator *output_simulator = new OutputSimulator();
 	ros::Rate loop_rate(25);
-	ROS_INFO("Generating fictional pose and pole data...");
 	while (ros::ok()) {
 		output_simulator->Step();
 		loop_rate.sleep();

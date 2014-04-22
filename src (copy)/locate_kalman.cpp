@@ -45,6 +45,7 @@ void Loc::DoTheKalman() {
 	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	else if (last_pose_.pose.pose.position.x != -2000) {	//no prediction --> enlarge covariance; use old pose to predict
 		const double time_scale = (current_time_ - pose_.header.stamp).toSec()/(pose_.header.stamp - last_pose_.header.stamp).toSec();
+		ROS_INFO("time_scale %f", time_scale);
 		const double delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x)*time_scale;
 		const double delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
 		const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
@@ -54,18 +55,13 @@ void Loc::DoTheKalman() {
 		state[0] += cos(state[2])*delta_s;
 		state[1] += sin(state[2])*delta_s;
 		state[2] += delta_theta/2;
-		//ROS_INFO("dist %f angle %f", delta_s, delta_theta);
 		covariance *= 2;
-		//ROS_INFO("No Odometry data");
+		ROS_INFO("No Odometry data");
 	}
 	else {	//no laser, just enlarge convariance
 		covariance *= 2;
 		ROS_INFO("No Odometry data");
 	}
-	//Write prediction so poles can be assigned properly
-	pred_pose_.position.x = state[0];
-	pred_pose_.position.y = state[1];
-	pred_pose_.orientation = tf::createQuaternionMsgFromYaw(state[2]);
 	RefreshData();
 	//measure
 	std::vector<Pole> visible_poles;	//get all visible poles
@@ -93,7 +89,7 @@ void Loc::DoTheKalman() {
 	pose_.pose.covariance[0] = covariance(0,0);
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
-	//ROS_INFO("cov_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
+	ROS_INFO("cov_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	//reset odometry
 	if (odom_.pose.pose.position.x != -2000.0) last_odom_ = odom_;
 	odom_.pose.pose.position.x = -2000.0;
