@@ -68,36 +68,47 @@ void Loc::Locate() {
 
 //takes a vector of pole scan data and assigns them to the respective poles
 void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort) {
-	for(int i = 0; i < scans_to_sort.size(); i++) {	//find closest pole for every scan
-		double min_dist = 2000000;
-		int index = -1;
-		for (int j = 0; j < poles_.size(); j++) {
-			localization::scan_point current_scan = poles_[j].laser_coords();
-			double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
-				+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
-			if (current_dist < min_dist) {
-				min_dist = current_dist;
-				index = j;
+	if (last_pose_.pose.pose.position.x != -2000 && pose_.pose.pose.position.x != -2000) {
+		for(int i = 0; i < scans_to_sort.size(); i++) {	//find closest pole for every scan
+			double min_dist = 2000000;
+			localization::scan_point correct_scan;
+			int index = -1;
+			for (int j = 0; j < poles_.size(); j++) {
+				const localization::xy_point current_pole = poles_[j].xy_coords();
+				const double dx = current_pole.x - pred_pose_.position.x;
+				const double dy = current_pole.y - pred_pose_.position.y;
+				localization::scan_point current_scan;
+				current_scan.angle = atan2(dy, dx) - tf::getYaw(pred_pose_.orientation);
+				current_scan.distance = pow(dx * dx + dy * dy, 0.5);
+				const double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
+					+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
+				if (current_dist < min_dist) {
+					min_dist = current_dist;
+					correct_scan = current_scan;
+					index = j;
+				}
+			}
+			assert(index != -1);
+			min_dist = pow(min_dist, 0.5);
+			double min_angle = std::abs(scans_to_sort[i].angle - correct_scan.angle);
+			NormalizeAngle(min_angle);
+			ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
+			if (poles_[index].visible()) {
+				if (min_dist < 0.2 && min_angle < 0.1) {
+					poles_[index].update(scans_to_sort[i], scan_.header.stamp);
+				}
+			}
+			else {//more tolerance if pole wasnt visible
+				if (min_dist < 0.4 && min_angle < 0.2) {
+					poles_[index].update(scans_to_sort[i], scan_.header.stamp);		//how close the new measurement has to be to the old one !d²!
+				}
 			}
 		}
-		assert(index != -1);
-		min_dist = std::abs(scans_to_sort[i].distance - poles_[index].laser_coords().distance);
-		double min_angle = std::abs(scans_to_sort[i].angle - poles_[index].laser_coords().angle);
-		if (poles_[index].visible()) {
-			if (min_dist < 0.2 && min_angle < 0.1) {
-				poles_[index].update(scans_to_sort[i], scan_.header.stamp);
-			}
+		for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
+			if (poles_[i].time() != scan_.header.stamp) poles_[i].disappear();
 		}
-		else {//more tolerance if pole wasnt visible
-			if (min_dist < 0.4 && min_angle < 0.2) {
-				poles_[index].update(scans_to_sort[i], scan_.header.stamp);		//how close the new measurement has to be to the old one !d²!
-			}
-		}
+		//PrintPoleScanData();
 	}
-	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
-		if (poles_[i].time() != scan_.header.stamp) poles_[i].disappear();
-	}
-	//PrintPoleScanData();
 }
 
 
@@ -189,6 +200,38 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 		}
 	}
 	*scan = target;
+}
+
+void Loc::CorrectMoveError(std::vector<localization::scan_point> *scan_pole_points) {	//correct error due to moving laser
+	if (last_pose_.pose.pose.position.x != -2000 && pose_.pose.pose.position.x != -2000) {	
+		for (int i = 0; i < scan_pole_points->size(); i++) {
+			localization::scan_point temp_point = scan_pole_points->at(i);
+			const double delta_t_old = (pose_.header.stamp - last_pose_.header.stamp).toSec();
+			const int scan_index = (int)(temp_point.angle-scan_.angle_min)/scan_.angle_increment;
+			//ROS_INFO("scan_index %d", scan_index);
+			const double measurement_delay = (scan_.ranges.size() - scan_index)*scan_.time_increment;
+			const double time_scale = measurement_delay/delta_t_old;
+			double delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x)*time_scale;
+			double delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
+			const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
+			const double last_theta = tf::getYaw(last_pose_.pose.pose.orientation);
+			const double current_theta = tf::getYaw(pose_.pose.pose.orientation);
+			const double delta_theta = (current_theta - last_theta)*time_scale;
+			delta_x = delta_s * cos(delta_theta/2);
+			delta_y = delta_s * sin(delta_theta/2);
+			double x_scan = temp_point.distance*cos(temp_point.angle);
+			double y_scan = temp_point.distance*sin(temp_point.angle);
+			x_scan -= delta_x;
+			y_scan -= delta_y;
+			const double new_angle = atan2(y_scan, x_scan) - delta_theta;
+			const double new_dist = pow(x_scan * x_scan + y_scan * y_scan, 0.5);
+			//ROS_INFO("Corrected angle from %f to %f", temp_point.angle, new_angle);
+			//ROS_INFO("Corrected distance from %f to %f", temp_point.distance, new_dist);
+			temp_point.angle = new_angle;
+			temp_point.distance = new_dist;
+			scan_pole_points->at(i) = temp_point;
+		}
+	}
 }
 
 void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {

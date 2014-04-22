@@ -37,6 +37,7 @@ class Loc {
 	geometry_msgs::PoseWithCovarianceStamped pose_;
 	geometry_msgs::PoseWithCovarianceStamped last_pose_;
 	geometry_msgs::PoseStamped initial_pose_;
+	geometry_msgs::Pose pred_pose_;
 	bool initiation_;
 	ros::Time current_time_;
 
@@ -58,6 +59,7 @@ class Loc {
 	void CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector);
 	bool IsPolePoint(const double &intensity, const double &distance);
 	void ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points);
+	void CorrectMoveError(std::vector<localization::scan_point> *scan_pole_points);
 	void MinimizeScans(std::vector<localization::scan_point> *scan, const int &threshold = 1);
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
 	void OdomCallback(const nav_msgs::Odometry &odom);
