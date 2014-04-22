@@ -14,10 +14,10 @@ Loc::Loc() {
 		pole_radius = 0.027;
 		ROS_WARN("Didn't find config for pole_radius");
 	}
-	if (ros::param::get("using_pioneer", using_pioneer_));	//wheel distance of robot
+	if (ros::param::get("use_odometry", use_odometry_));	//wheel distance of robot
 	else {
-		using_pioneer_ = false;
-		ROS_WARN("Didn't find config for using_pioneer_");
+		use_odometry_ = false;
+		ROS_WARN("Didn't find config for use_odometry_");
 	}
 	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
@@ -78,7 +78,8 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			}
 		}
 		assert(index != -1);
-		if (min_dist < 1) poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
+		const double omega_max = 1; //max turn speed
+		if (min_dist < scans_to_sort[i].distance*omega_max/25) poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
 	}
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
 		if (poles_[i].time() != current_time_) poles_[i].disappear();

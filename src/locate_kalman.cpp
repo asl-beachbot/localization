@@ -15,7 +15,7 @@ void Loc::DoTheKalman() {
 	//ROS_INFO("covariance %f", covariance(0,0));
 
 	//predict
-	if (odom_.pose.pose.position.x != -2000.0 && last_odom_.pose.pose.position.x != -2000.0) {
+	if (odom_.pose.pose.position.x != -2000.0 && last_odom_.pose.pose.position.x != -2000.0 && use_odometry_) {
 		const double init_odom_theta = tf::getYaw(initial_odom_.pose.pose.orientation);
 		const double predicted_theta = tf::getYaw(odom_.pose.pose.orientation);
 		const double last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
@@ -33,39 +33,20 @@ void Loc::DoTheKalman() {
 		state[0] += (x_delta_robot_cs * cos(current_theta) + y_delta_robot_cs * sin(current_theta));
 		state[1] += -(x_delta_robot_cs * sin(-current_theta) + y_delta_robot_cs * cos(current_theta));
 		state[2] += theta_delta_robot_cs;
-		if (using_pioneer_) {
-			/*state[0] += (x_delta_robot_cs * cos(predicted_theta-init_odom_theta+init_theta) 
-				+ y_delta_robot_cs * sin(predicted_theta-init_odom_theta+init_theta));
-			state[1] += -(x_delta_robot_cs * sin(predicted_theta-init_odom_theta+init_theta) 
-				+ y_delta_robot_cs * cos(predicted_theta-init_odom_theta+init_theta));
-			state[2] += theta_delta_robot_cs;*/
-			/*covariance << 
-				odom_.pose.covariance[0], 0, 0,
-				0, odom_.pose.covariance[7], 0, 
-				0, 0, odom_.pose.covariance[35];*/
-			covariance << 
-				0.01, 0, 0,
-				0, 0.01, 0, 
-				0, 0, 0.01;
-		}
-		else {	
-			//state += PredictPositionDelta();	//position delta resulting from odometry prediction
-			Eigen::Matrix3d f_x = StateJacobi();
-			covariance = f_x*covariance*f_x.transpose();
-			Eigen::MatrixXd f_u = InputJacobi();
+		
+		//state += PredictPositionDelta();	//position delta resulting from odometry prediction
+		Eigen::Matrix3d f_x = StateJacobi();
+		covariance = f_x*covariance*f_x.transpose();
+		Eigen::MatrixXd f_u = InputJacobi();
 
-			covariance += f_u*Q()*f_u.transpose();
-		}
+		covariance += f_u*Q()*f_u.transpose();
 		//ROS_INFO("predicted: [%f %f] %f", state[0], state[1], state[2]);
 	}
 	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
-	/*else {
-		covariance <<
-			9999999, 0, 0,
-			0, 9999999, 0, 
-			0, 0, 9999999;
+	else {	//no prediction --> enlarge covariance
+		covariance *= 2;
 		ROS_INFO("No Odometry data");
-	}*/
+	}
 	//measure
 	std::vector<Pole> visible_poles;	//get all visible poles
 	for (int i = 0; i < poles_.size(); i++) if (poles_[i].visible()) visible_poles.push_back(poles_[i]);

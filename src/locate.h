@@ -28,7 +28,7 @@ class Loc {
 
 	double b;	//wheel distance of robot
 	double pole_radius;	//radius of reflective poles
-	bool using_pioneer_;	//if using pioneer for testing
+	bool use_odometry_;	//if using pioneer for testing
 	sensor_msgs::LaserScan scan_;
 	nav_msgs::Odometry odom_;
 	nav_msgs::Odometry last_odom_;
