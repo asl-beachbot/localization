@@ -41,7 +41,7 @@ void Loc::InitiatePoles() {
 			std::vector<localization::xy_point> xy_poles = ScanToXY(averaged_scan_points);
 			//for (int i = 0; i < xy_poles.size(); i++) ROS_INFO("pole (kart.) at [%f %f]", xy_poles[i].x, xy_poles[i].y);	//print poles for debugging
 			for (int i = 0; i < averaged_scan_points.size(); i++) {	//fill pole vector
-				poles_.push_back(Pole(xy_poles[i], averaged_scan_points[i], ros::Time::now(), i));
+				poles_.push_back(Pole(xy_poles[i], averaged_scan_points[i], scan_.header.stamp, i));
 			}
 			PublishPoles();
 			SetInit(false);

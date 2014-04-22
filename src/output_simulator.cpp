@@ -39,16 +39,27 @@ class OutputSimulator {
 		pose_pub_.publish(pose);
 
 		geometry_msgs::PointStamped point;
-		point.header = pose.header;
+		point.header.stamp = ros::Time::now();
+		point.header.frame_id = "fixed_frame";
+		point.header.seq = 1;
 		point.point.x = xp1_;
 		point.point.y = yp1_;
 		pole_pub_.publish(point);
+		point.header.stamp = ros::Time::now();
+		point.header.frame_id = "fixed_frame";
+		point.header.seq = 1;
 		point.point.x = xp2_;
 		point.point.y = yp2_;
 		pole_pub_.publish(point);
+		point.header.stamp = ros::Time::now();
+		point.header.frame_id = "fixed_frame";
+		point.header.seq = 1;
 		point.point.x = xp3_;
 		point.point.y = yp3_;
 		pole_pub_.publish(point);
+		point.header.stamp = ros::Time::now();
+		point.header.frame_id = "fixed_frame";
+		point.header.seq = 1;
 		point.point.x = xp4_;
 		point.point.y = yp4_;
 		pole_pub_.publish(point);
@@ -56,7 +67,7 @@ class OutputSimulator {
 
 	void Move() {
 		const ros::Time now = ros::Time::now();
-		const double time_is_reserved = (begin_-now).sec + (begin_-now).nsec/1000000000.0;
+		const double time_is_reserved = (begin_-now).toSec();
 		x_ = 1*cos(time_is_reserved/1*M_PI)+2;
 		y_ = 1*sin(time_is_reserved/1*M_PI)+2;
 		theta_ = (-cos(time_is_reserved/1*M_PI)+1)*2*M_PI;
@@ -71,7 +82,7 @@ class OutputSimulator {
 
  	OutputSimulator() {
  		pose_pub_ = n_.advertise<geometry_msgs::PoseStamped>("/localization/bot_pose", 1);
- 		pole_pub_ = n_.advertise<geometry_msgs::PointStamped>("/localization/pole_pos", 1);
+ 		pole_pub_ = n_.advertise<geometry_msgs::PointStamped>("/localization/pole_pos", 4);
  		begin_ = ros::Time::now();
  		if (ros::param::get("xp1", xp1_));	
 		if (ros::param::get("yp1", yp1_));	

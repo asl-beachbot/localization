@@ -32,6 +32,7 @@ void Loc::PublishPose() {
 	temp_pose.pose.orientation = pose_.pose.pose.orientation;
 	temp_pose.header = pose_.header;
 	pub_pose_.publish(temp_pose);
+	ROS_INFO("delay: %fms", (ros::Time::now()-current_time_).toSec()*1000);
 	//ROS_INFO("Success!");
 }
 
@@ -61,7 +62,7 @@ void Loc::PublishTf() {
 }
 
 void Loc::PrintPose() {
-	//ROS_INFO("Estimate [%f %f] %f rad\n", pose_.pose.pose.position.x, pose_.pose.pose.position.y, tf::getYaw(pose_.pose.pose.orientation));
+	ROS_INFO("Estimate [%f %f] %f rad\n", pose_.pose.pose.position.x, pose_.pose.pose.position.y, tf::getYaw(pose_.pose.pose.orientation));
 }
 
 void Loc::PrintPoleScanData() {
@@ -71,8 +72,6 @@ void Loc::PrintPoleScanData() {
 
 //function to fill the poles with data from the current laser scan
 void Loc::RefreshData() {
-	current_time_ = ros::Time::now();
-	ros::spinOnce();
 	std::vector<localization::scan_point> locate_scans;	//TODO: put most of the following stuff in callback
 	ExtractPoleScans(&locate_scans);	//get relevant scan points
 	UpdatePoles(locate_scans);		//assign scans to respective poles

@@ -19,7 +19,7 @@ Loc::Loc() {
 		use_odometry_ = false;
 		ROS_WARN("Didn't find config for use_odometry_");
 	}
-	sub_scan_ = n_.subscribe("/scan",1000, &Loc::ScanCallback, this);
+	sub_scan_ = n_.subscribe("/scan",1, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
 	srv_init_ = n_.advertiseService("initialize_localization", &Loc::InitService, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
@@ -28,8 +28,10 @@ Loc::Loc() {
 	pub_map_ = n_.advertise<localization::beach_map>("beach_map",1000,true);
 	SetInit(true);	//start with initiation
 	pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
-	odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
+	last_pose_.pose.pose.position.x = -2000;	
+	odom_.pose.pose.position.x = -2000;	
 	last_odom_.pose.pose.position.x = -2000;
+	ros::spinOnce();	//get initial data
 	StateHandler();
 }
 
@@ -53,12 +55,13 @@ void Loc::StateHandler() {	//runs either initiation or localization
 
 void Loc::Locate() {
 	ros::Rate loop_rate(25);
-	RefreshData();
-	DoTheKalman();
-	EstimateInvisiblePoles();
-	PrintPose();
-	PublishPoles();
+	//RefreshData();
+	ros::spinOnce();
+	if (!scan_.ranges.empty()) DoTheKalman();
 	PublishPose();
+	EstimateInvisiblePoles();
+	//PrintPose();
+	PublishPoles();
 	PublishTf();
 	loop_rate.sleep();
 }
@@ -82,17 +85,17 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 		double min_angle = std::abs(scans_to_sort[i].angle - poles_[index].laser_coords().angle);
 		if (poles_[index].visible()) {
 			if (min_dist < 0.2 && min_angle < 0.1) {
-				poles_[index].update(scans_to_sort[i], current_time_);
+				poles_[index].update(scans_to_sort[i], scan_.header.stamp);
 			}
 		}
 		else {//more tolerance if pole wasnt visible
 			if (min_dist < 0.4 && min_angle < 0.2) {
-				poles_[index].update(scans_to_sort[i], current_time_);		//how close the new measurement has to be to the old one !d²!
+				poles_[index].update(scans_to_sort[i], scan_.header.stamp);		//how close the new measurement has to be to the old one !d²!
 			}
 		}
 	}
 	for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
-		if (poles_[i].time() != current_time_) poles_[i].disappear();
+		if (poles_[i].time() != scan_.header.stamp) poles_[i].disappear();
 	}
 	//PrintPoleScanData();
 }
@@ -191,15 +194,15 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {
 	if (scan.intensities.size() > 0) {	//don't take scans from old laser
 		scan_ = scan;
-		scan_.header.stamp = current_time_;
 	}
+	else ROS_ERROR("Receiving empty laser messages");
+	SetTime();
 	//ROS_INFO("scan %d", scan.header.seq);
 	//ROS_INFO("scan_ %d", scan_.header.seq);
 }
 
 void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 	odom_ = odom;
-	odom_.header.stamp = current_time_;
 	if (last_odom_.pose.pose.position.x == -2000) {
 		initial_odom_ = odom;
 		/*ROS_INFO("Initial odom pose: [%f %f] %f", 
@@ -228,6 +231,11 @@ bool Loc::InitService(localization::InitLocalization::Request &req, localization
 			res.success = true;
 		}
 	}
+}
+
+void Loc::SetTime() {
+	const double current_sec = scan_.header.stamp.toSec() + scan_.time_increment * scan_.ranges.size();
+	current_time_.fromSec(current_sec);	//use time of last scan measurement
 }
 
 int main(int argc, char **argv) {

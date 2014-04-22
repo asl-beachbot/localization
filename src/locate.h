@@ -35,6 +35,7 @@ class Loc {
 	nav_msgs::Odometry initial_odom_;
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseWithCovarianceStamped pose_;
+	geometry_msgs::PoseWithCovarianceStamped last_pose_;
 	geometry_msgs::PoseStamped initial_pose_;
 	bool initiation_;
 	ros::Time current_time_;
@@ -64,6 +65,7 @@ class Loc {
 	void SetInit(const bool &init);
 	//Kalman functions
 	void DoTheKalman();
+	void SetTime();
 	Eigen::Vector3d PredictPositionDelta();
 	Eigen::Matrix3d StateJacobi();
 	Eigen::MatrixXd InputJacobi();
