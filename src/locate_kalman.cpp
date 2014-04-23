@@ -49,7 +49,9 @@ void Loc::DoTheKalman() {
 		const double delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
 		const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
 		const double last_theta = tf::getYaw(last_pose_.pose.pose.orientation);
-		const double delta_theta = (state[2] - last_theta)*time_scale;
+		double delta_theta = (state[2] - last_theta);
+		NormalizeAngle(delta_theta);
+		delta_theta *= time_scale;
 		state[2] += delta_theta/2;
 		state[0] += cos(state[2])*delta_s;
 		state[1] += sin(state[2])*delta_s;

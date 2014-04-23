@@ -68,6 +68,9 @@ void Loc::Locate() {
 
 //takes a vector of pole scan data and assigns them to the respective poles
 void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort) {
+	ROS_INFO("pred_movement [%f %f] %frad", pred_pose_.position.x - pose_.pose.pose.position.x, 
+		pred_pose_.position.x - pose_.pose.pose.position.x,
+		tf::getYaw(pred_pose_.orientation) - tf::getYaw(pose_.pose.pose.orientation));
 	if (last_pose_.pose.pose.position.x != -2000 && pose_.pose.pose.position.x != -2000) {
 		for(int i = 0; i < scans_to_sort.size(); i++) {	//find closest pole for every scan
 			double min_dist = 2000000;
@@ -82,6 +85,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 				current_scan.distance = pow(dx * dx + dy * dy, 0.5);
 				const double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
 					+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
+				ROS_INFO("i %d j %d error_dist %f current_dist %f current_angle %f", i, j, current_dist, current_scan.distance, current_scan.angle);
 				if (current_dist < min_dist) {
 					min_dist = current_dist;
 					correct_scan = current_scan;
@@ -216,7 +220,9 @@ void Loc::CorrectMoveError(std::vector<localization::scan_point> *scan_pole_poin
 			const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
 			const double last_theta = tf::getYaw(last_pose_.pose.pose.orientation);
 			const double current_theta = tf::getYaw(pose_.pose.pose.orientation);
-			const double delta_theta = (current_theta - last_theta)*time_scale;
+			double delta_theta = (current_theta - last_theta);
+			NormalizeAngle(delta_theta);
+			delta_theta *= time_scale;
 			delta_x = delta_s * cos(delta_theta/2);
 			delta_y = delta_s * sin(delta_theta/2);
 			double x_scan = temp_point.distance*cos(temp_point.angle);
