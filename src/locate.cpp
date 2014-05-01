@@ -68,14 +68,15 @@ void Loc::Locate() {
 
 //takes a vector of pole scan data and assigns them to the respective poles
 void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort) {
-	ROS_INFO("pred_movement [%f %f] %frad", pred_pose_.position.x - pose_.pose.pose.position.x, 
-		pred_pose_.position.x - pose_.pose.pose.position.x,
-		tf::getYaw(pred_pose_.orientation) - tf::getYaw(pose_.pose.pose.orientation));
+	//ROS_INFO("pred_movement [%f %f] %frad", pred_pose_.position.x - pose_.pose.pose.position.x, 
+	//	pred_pose_.position.x - pose_.pose.pose.position.x,
+	//	tf::getYaw(pred_pose_.orientation) - tf::getYaw(pose_.pose.pose.orientation));
 	if (last_pose_.pose.pose.position.x != -2000 && pose_.pose.pose.position.x != -2000) {
 		for(int i = 0; i < scans_to_sort.size(); i++) {	//find closest pole for every scan
 			double min_dist = 2000000;
 			localization::scan_point correct_scan;
 			int index = -1;
+			//ROS_INFO("sort_scan_dist %f sort_scan_angle %f", scans_to_sort[i].distance, scans_to_sort[i].angle);
 			for (int j = 0; j < poles_.size(); j++) {
 				const localization::xy_point current_pole = poles_[j].xy_coords();
 				const double dx = current_pole.x - pred_pose_.position.x;
@@ -85,7 +86,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 				current_scan.distance = pow(dx * dx + dy * dy, 0.5);
 				const double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
 					+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
-				ROS_INFO("i %d j %d error_dist %f current_dist %f current_angle %f", i, j, current_dist, current_scan.distance, current_scan.angle);
+				//ROS_INFO("i %d j %d current_dist %f scan_dist %f scan_angle %f", i, j, current_dist, current_scan.distance, current_scan.angle);
 				if (current_dist < min_dist) {
 					min_dist = current_dist;
 					correct_scan = current_scan;
@@ -96,13 +97,13 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			min_dist = pow(min_dist, 0.5);
 			double min_angle = std::abs(scans_to_sort[i].angle - correct_scan.angle);
 			NormalizeAngle(min_angle);
-			ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
+			//ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
 			if (poles_[index].visible()) {
 				if (min_dist < 0.2 && min_angle < 0.1) {
 					poles_[index].update(scans_to_sort[i], scan_.header.stamp);
 				}
 			}
-			else {//more tolerance if pole wasnt visible
+			else {//more tolerance if pole wasn't visible
 				if (min_dist < 0.4 && min_angle < 0.2) {
 					poles_[index].update(scans_to_sort[i], scan_.header.stamp);		//how close the new measurement has to be to the old one !d²!
 				}

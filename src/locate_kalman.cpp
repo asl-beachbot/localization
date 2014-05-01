@@ -33,13 +33,18 @@ void Loc::DoTheKalman() {
 		state[0] += (x_delta_robot_cs * cos(current_theta) + y_delta_robot_cs * sin(current_theta));
 		state[1] += -(x_delta_robot_cs * sin(-current_theta) + y_delta_robot_cs * cos(current_theta));
 		state[2] += theta_delta_robot_cs;
+
+		const double ds = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(tf::getYaw(last_odom_.pose.pose.orientation))
+			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(tf::getYaw(last_odom_.pose.pose.orientation));
+		const double dth = tf::getYaw(odom_.pose.pose.orientation) - tf::getYaw(last_odom_.pose.pose.orientation);
+		const double theta = tf::getYaw(pose_.pose.pose.orientation);
 		
 		//state += PredictPositionDelta();	//position delta resulting from odometry prediction
-		Eigen::Matrix3d f_x = StateJacobi();
+		Eigen::Matrix3d f_x = StateJacobi(ds, dth, theta);
 		covariance = f_x*covariance*f_x.transpose();
-		Eigen::MatrixXd f_u = InputJacobi();
+		Eigen::MatrixXd f_u = InputJacobi(ds, dth, theta);
 
-		covariance += f_u*Q()*f_u.transpose();
+		covariance += f_u*Q(ds, dth)*f_u.transpose();
 		//ROS_INFO("predicted: [%f %f] %f", state[0], state[1], state[2]);
 	}
 	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
@@ -104,7 +109,7 @@ void Loc::DoTheKalman() {
 	scan_.ranges.clear();
 }
 
-Eigen::Vector3d Loc::PredictPositionDelta() {
+Eigen::Vector3d Loc::PredictPositionDelta() {	//currently not used
 	Eigen::Vector3d delta_predict;
 	const double ds = (odom_.pose.pose.position.x+odom_.pose.pose.position.y)/2;
 	const double dth = (odom_.pose.pose.position.x-odom_.pose.pose.position.y)/b;
@@ -115,11 +120,7 @@ Eigen::Vector3d Loc::PredictPositionDelta() {
 	return delta_predict;
 }
 
-Eigen::Matrix3d Loc::StateJacobi() {
-	const double ds = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(tf::getYaw(last_odom_.pose.pose.orientation))
-			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(tf::getYaw(last_odom_.pose.pose.orientation));
-	const double dth = tf::getYaw(odom_.pose.pose.orientation) - tf::getYaw(last_odom_.pose.pose.orientation);
-	const double theta = tf::getYaw(pose_.pose.pose.orientation);
+Eigen::Matrix3d Loc::StateJacobi(const double &ds, const double &dth, const double &theta) {
 	Eigen::Matrix3d f_x;
 	f_x << 
 		1, 0, -ds*sin(theta+dth/2),
@@ -128,11 +129,7 @@ Eigen::Matrix3d Loc::StateJacobi() {
 	return f_x;
 }
 
-Eigen::MatrixXd Loc::InputJacobi() {
-	const double ds = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(tf::getYaw(last_odom_.pose.pose.orientation))
-			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(tf::getYaw(last_odom_.pose.pose.orientation));
-	const double dth = tf::getYaw(odom_.pose.pose.orientation) - tf::getYaw(last_odom_.pose.pose.orientation);
-	const double theta = tf::getYaw(pose_.pose.pose.orientation);
+Eigen::MatrixXd Loc::InputJacobi(const double &ds, const double &dth, const double &theta) {
 	//ROS_INFO("ds %f dth %f theta %f", ds, dth, theta);
 	Eigen::MatrixXd f_u(3,2);
 	f_u << 
@@ -142,12 +139,9 @@ Eigen::MatrixXd Loc::InputJacobi() {
 		return f_u;
 }
 
-Eigen::Matrix2d Loc::Q() {
+Eigen::Matrix2d Loc::Q(const double &ds, const double &dth) {
 	const double k1 = 0.07;
 	const double k2 = 0.07;
-	const double ds = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(tf::getYaw(last_odom_.pose.pose.orientation))
-		+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(tf::getYaw(last_odom_.pose.pose.orientation));
-	const double dth = tf::getYaw(odom_.pose.pose.orientation) - tf::getYaw(last_odom_.pose.pose.orientation);
 	const double s_l = ds - dth*b/2;
 	const double s_r = ds + dth*b/2;
 	Eigen::Matrix2d q;

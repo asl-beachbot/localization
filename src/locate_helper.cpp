@@ -23,7 +23,7 @@ void Loc::PublishPoles() {
 		//}
 		if (poles_[i].visible()) j++;
 	}
-	ROS_INFO("seeing %d poles\n", j);
+	//ROS_INFO("seeing %d poles\n", j);
 	//ROS_INFO("Success!");
 }
 
@@ -74,7 +74,7 @@ void Loc::PrintPoleScanData() {
 
 //function to fill the poles with data from the current laser scan
 void Loc::RefreshData() {
-	std::vector<localization::scan_point> locate_scans;	//TODO: put most of the following stuff in callback
+	std::vector<localization::scan_point> locate_scans;	
 	ExtractPoleScans(&locate_scans);	//get relevant scan points
 	CorrectMoveError(&locate_scans);	
 	UpdatePoles(locate_scans);		//assign scans to respective poles
