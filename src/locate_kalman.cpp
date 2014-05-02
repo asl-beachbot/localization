@@ -21,14 +21,21 @@ void Loc::DoTheKalman() {
 		const double last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
 		const double init_theta = tf::getYaw(initial_pose_.pose.orientation);
 		const double current_theta = tf::getYaw(pose_.pose.pose.orientation);
-		const double x_delta_robot_cs = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(last_theta)
+		double x_delta_robot_cs = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(last_theta)
 			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(last_theta);
 		//ROS_INFO("init_odom_theta %f", init_odom_theta);
 		//ROS_INFO("x: %f", odom_.pose.pose.position.x);
-		const double y_delta_robot_cs = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * sin(-last_theta)
+		double y_delta_robot_cs = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * sin(-last_theta)
 			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * cos(last_theta);
 		//ROS_INFO("y: %f", odom_.pose.pose.position.y);
-		const double theta_delta_robot_cs = predicted_theta - last_theta;
+		double theta_delta_robot_cs = predicted_theta - last_theta;
+		const double delta_t_odom = (odom_.header.stamp - last_odom_.header.stamp).toSec();
+		const double delta_t_pose = (current_time_ - pose_.header.stamp).toSec();
+		assert(delta_t_pose != 0 && delta_t_odom != 0);
+		const double time_scale = delta_t_pose/delta_t_odom;
+		x_delta_robot_cs *= time_scale;
+		y_delta_robot_cs *= time_scale;
+		theta_delta_robot_cs *= time_scale;
 		//ROS_INFO("predicted_theta %f", predicted_theta);
 		state[0] += (x_delta_robot_cs * cos(current_theta) + y_delta_robot_cs * sin(current_theta));
 		state[1] += -(x_delta_robot_cs * sin(-current_theta) + y_delta_robot_cs * cos(current_theta));
@@ -67,7 +74,7 @@ void Loc::DoTheKalman() {
 	}
 	else {	//no laser, just enlarge convariance
 		covariance *= 2;
-		ROS_INFO("No Odometry data");
+		//ROS_INFO("No Odometry data");
 	}
 	//Write prediction so poles can be assigned properly
 	pred_pose_.position.x = state[0];
