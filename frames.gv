@@ -1,3 +1,0 @@
-digraph G {
-"fixed_frame" -> "laser_frame"[label="Broadcaster: /suspension_control/suspension_control\nAverage rate: 20.024 Hz\nMost recent transform: 1398939710.701 \nBuffer length: 4.944 sec\n"];
-}

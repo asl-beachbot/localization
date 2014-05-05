@@ -21,21 +21,20 @@ void Loc::DoTheKalman() {
 		const double last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
 		const double init_theta = tf::getYaw(initial_pose_.pose.orientation);
 		const double current_theta = tf::getYaw(pose_.pose.pose.orientation);
-		double x_delta_robot_cs = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(last_theta)
-			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(last_theta);
+		double dx = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x);
+		double dy = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y);
 		//ROS_INFO("init_odom_theta %f", init_odom_theta);
 		//ROS_INFO("x: %f", odom_.pose.pose.position.x);
-		double y_delta_robot_cs = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * sin(-last_theta)
-			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * cos(last_theta);
-		//ROS_INFO("y: %f", odom_.pose.pose.position.y);
 		double theta_delta_robot_cs = predicted_theta - last_theta;
 		const double delta_t_odom = (odom_.header.stamp - last_odom_.header.stamp).toSec();
 		const double delta_t_pose = (current_time_ - pose_.header.stamp).toSec();
 		assert(delta_t_pose != 0 && delta_t_odom != 0);
 		const double time_scale = delta_t_pose/delta_t_odom;
-		x_delta_robot_cs *= time_scale;
-		y_delta_robot_cs *= time_scale;
+		const double delta_s = pow(dx *dx + dy * dy, 0.5)*time_scale;
 		theta_delta_robot_cs *= time_scale;
+		ROS_INFO("v_theta: %f", theta_delta_robot_cs/delta_t_pose);
+		const double x_delta_robot_cs = delta_s * cos(theta_delta_robot_cs/2);
+		const double y_delta_robot_cs = delta_s * sin(theta_delta_robot_cs/2);
 		//ROS_INFO("predicted_theta %f", predicted_theta);
 		state[0] += (x_delta_robot_cs * cos(current_theta) + y_delta_robot_cs * sin(current_theta));
 		state[1] += -(x_delta_robot_cs * sin(-current_theta) + y_delta_robot_cs * cos(current_theta));
@@ -52,7 +51,7 @@ void Loc::DoTheKalman() {
 		Eigen::MatrixXd f_u = InputJacobi(ds, dth, theta);
 
 		covariance += f_u*Q(ds, dth)*f_u.transpose();
-		//ROS_INFO("predicted: [%f %f] %f", state[0], state[1], state[2]);
+		ROS_INFO("everything");
 	}
 	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	else if (last_pose_.pose.pose.position.x != -2000) {	//no prediction --> enlarge covariance; use old pose to predict
@@ -64,17 +63,18 @@ void Loc::DoTheKalman() {
 		double delta_theta = (state[2] - last_theta);
 		NormalizeAngle(delta_theta);
 		delta_theta *= time_scale;
+		ROS_INFO("v_theta: %f", delta_theta/(current_time_ - pose_.header.stamp).toSec());
 		state[2] += delta_theta/2;
 		state[0] += cos(state[2])*delta_s;
 		state[1] += sin(state[2])*delta_s;
 		state[2] += delta_theta/2;
-		//ROS_INFO("dist %f angle %f", delta_s, delta_theta);
+		ROS_INFO("No odom but laser");
 		covariance *= 2;
 		//ROS_INFO("No Odometry data");
 	}
 	else {	//no laser, just enlarge convariance
 		covariance *= 2;
-		//ROS_INFO("No Odometry data");
+		ROS_INFO("No odom no laser");
 	}
 	//Write prediction so poles can be assigned properly
 	pred_pose_.position.x = state[0];

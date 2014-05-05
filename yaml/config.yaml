@@ -1,5 +1,5 @@
 #localization settings
-use_odometry: true
+use_odometry: false
 pole_radius: 0.027
 b: 0.264
 use_testing_path: false

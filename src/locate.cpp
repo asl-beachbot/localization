@@ -19,7 +19,7 @@ Loc::Loc() {
 		use_odometry_ = false;
 		ROS_WARN("Didn't find config for use_odometry_");
 	}
-	sub_scan_ = n_.subscribe("/scan",1, &Loc::ScanCallback, this);
+	sub_scan_ = n_.subscribe("/output",1, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
 	srv_init_ = n_.advertiseService("initialize_localization", &Loc::InitService, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
@@ -69,7 +69,7 @@ void Loc::Locate() {
 //takes a vector of pole scan data and assigns them to the respective poles
 void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort) {
 	ROS_INFO("pred_movement [%f %f] %frad", pred_pose_.position.x - pose_.pose.pose.position.x, 
-		pred_pose_.position.x - pose_.pose.pose.position.x,
+		pred_pose_.position.y - pose_.pose.pose.position.y,
 		tf::getYaw(pred_pose_.orientation) - tf::getYaw(pose_.pose.pose.orientation));
 	if (last_pose_.pose.pose.position.x != -2000 && pose_.pose.pose.position.x != -2000) {
 		for(int i = 0; i < scans_to_sort.size(); i++) {	//find closest pole for every scan
@@ -87,7 +87,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 				current_scan.distance = pow(dx * dx + dy * dy, 0.5);
 				const double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
 					+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
-				ROS_INFO("i %d j %d current_dist %f scan_dist %f scan_angle %f", i, j, current_dist, current_scan.distance, current_scan.angle);
+				//ROS_INFO("i %d j %d current_dist %f scan_dist %f scan_angle %f", i, j, current_dist, current_scan.distance, current_scan.angle);
 				if (current_dist < min_dist) {
 					min_dist = current_dist;
 					correct_scan = current_scan;
@@ -151,13 +151,16 @@ bool Loc::IsPolePoint(const double &intensity, const double &distance) {
 void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points) {	
 	scan_pole_points->clear();	//clear old scan points
 	for (int i = 0; i < scan_.intensities.size(); i++) {
-		if (IsPolePoint(scan_.intensities[i], scan_.ranges[i])) {
-			localization::scan_point temp;
-			temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
-			temp.angle = (scan_.angle_min+scan_.angle_increment*i);
-			temp.intensity = scan_.intensities[i];
-			//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
-			scan_pole_points->push_back(temp);
+		if(scan_.ranges[i] > scan_.range_min && scan_.ranges[i] < scan_.range_max) {	
+			//if (IsPolePoint(scan_.intensities[i], scan_.ranges[i])) {
+			if (1) {
+				localization::scan_point temp;
+				temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
+				temp.angle = (scan_.angle_min+scan_.angle_increment*i);
+				temp.intensity = scan_.intensities[i];
+				//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
+				scan_pole_points->push_back(temp);
+			}
 		}
 	}
 	MinimizeScans(scan_pole_points);
