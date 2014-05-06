@@ -19,8 +19,19 @@ Loc::Loc() {
 		use_odometry_ = false;
 		ROS_WARN("Didn't find config for use_odometry_");
 	}
+	if (ros::param::get("scan_covariance", scan_covariance_));	//wheel distance of robot
+	else {
+		scan_covariance_ = 0.02*0.02;
+		ROS_WARN("Didn't find config for scan_covariance_");
+	}
+	if (ros::param::get("covariance_expansion", covariance_expansion_));	//wheel distance of robot
+	else {
+		covariance_expansion_ = 100;
+		ROS_WARN("Didn't find config for covariance_expansion_");
+	}
 	sub_scan_ = n_.subscribe("/output",1, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
+	sub_imu_ = n_.subscribe("/imu/data",1, &Loc::ImuCallback, this);
 	srv_init_ = n_.advertiseService("initialize_localization", &Loc::InitService, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
@@ -31,6 +42,8 @@ Loc::Loc() {
 	last_pose_.pose.pose.position.x = -2000;	
 	odom_.pose.pose.position.x = -2000;	
 	last_odom_.pose.pose.position.x = -2000;
+	attitude_.orientation.x = -2000;
+	last_attitude_.orientation.x = -2000;
 	ros::spinOnce();	//get initial data
 	StateHandler();
 }
@@ -281,6 +294,27 @@ void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 			initial_odom_.pose.pose.position.x, initial_odom_.pose.pose.position.x, 
 			tf::getYaw(initial_odom_.pose.pose.orientation));*/
 	}
+}
+
+void Loc::ImuCallback(const sensor_msgs::Imu &attitude) {
+	//ROS_INFO("Callback");
+  last_attitude_ = attitude_;	
+  attitude_.header = attitude.header;
+  Eigen::Quaternion<double> rotate_helper;
+  const double x = attitude.orientation.x;
+  const double y = attitude.orientation.y;
+  const double z = attitude.orientation.z;
+  const double w = attitude.orientation.w;
+  rotate_helper = Eigen::Quaternion<double>(w,x,y,z);
+  Eigen::Quaternion<double> rot;
+  rot = Eigen::AngleAxis<double>(M_PI/2, Eigen::Vector3d(0,0,1));
+  rotate_helper *= rot;	//correct weird imu cs
+ 	rot = Eigen::AngleAxis<double>(M_PI/2, Eigen::Vector3d(0,1,0));
+ 	rotate_helper *= rot;	//rotate to sensor mount orientation
+  attitude_.orientation.x = rotate_helper.x();
+  attitude_.orientation.y = rotate_helper.y();
+  attitude_.orientation.z = rotate_helper.z();
+  attitude_.orientation.w = rotate_helper.w();
 }
 
 bool Loc::InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res) {

@@ -32,10 +32,8 @@ void Loc::DoTheKalman() {
 		const double time_scale = delta_t_pose/delta_t_odom;
 		const double delta_s = pow(dx *dx + dy * dy, 0.5)*time_scale;
 		theta_delta_robot_cs *= time_scale;
-		ROS_INFO("v_theta: %f", theta_delta_robot_cs/delta_t_pose);
 		const double x_delta_robot_cs = delta_s * cos(theta_delta_robot_cs/2);
 		const double y_delta_robot_cs = delta_s * sin(theta_delta_robot_cs/2);
-		//ROS_INFO("predicted_theta %f", predicted_theta);
 		state[0] += (x_delta_robot_cs * cos(current_theta) + y_delta_robot_cs * sin(current_theta));
 		state[1] += -(x_delta_robot_cs * sin(-current_theta) + y_delta_robot_cs * cos(current_theta));
 		state[2] += theta_delta_robot_cs;
@@ -54,13 +52,15 @@ void Loc::DoTheKalman() {
 		ROS_INFO("everything");
 	}
 	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
-	else if (last_pose_.pose.pose.position.x != -2000) {	//no prediction --> enlarge covariance; use old pose to predict
-		const double time_scale = (current_time_ - pose_.header.stamp).toSec()/(pose_.header.stamp - last_pose_.header.stamp).toSec();
+	else if (last_pose_.pose.pose.position.x != -2000 && last_attitude_.orientation.x != -2000) {	
+	//no prediction --> enlarge covariance; use old pose and imu to predict
+		const double time_scale = (current_time_ - pose_.header.stamp).toSec()/(attitude_.header.stamp - last_attitude_.header.stamp).toSec();
 		const double delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x)*time_scale;
 		const double delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
 		const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
-		const double last_theta = tf::getYaw(last_pose_.pose.pose.orientation);
-		double delta_theta = (state[2] - last_theta);
+		const double last_theta = tf::getYaw(last_attitude_.orientation);
+		const double this_theta = tf::getYaw(attitude_.orientation);
+		double delta_theta = (this_theta - last_theta);
 		NormalizeAngle(delta_theta);
 		delta_theta *= time_scale;
 		ROS_INFO("v_theta: %f", delta_theta/(current_time_ - pose_.header.stamp).toSec());
@@ -69,7 +69,8 @@ void Loc::DoTheKalman() {
 		state[1] += sin(state[2])*delta_s;
 		state[2] += delta_theta/2;
 		ROS_INFO("No odom but laser");
-		covariance *= 2;
+		covariance *= covariance_expansion_;
+		//covariance(2,2) = attitude_.orientation_covariance[0];
 		//ROS_INFO("No Odometry data");
 	}
 	else {	//no laser, just enlarge convariance
@@ -187,8 +188,8 @@ Eigen::MatrixXd Loc::EstimateJacobi(const std::vector<Pole> &visible_poles, cons
 Eigen::MatrixXd Loc::ErrorMatrix(const std::vector<Pole> &visible_poles) {
 	Eigen::MatrixXd R = Eigen::MatrixXd::Zero(visible_poles.size()*2,visible_poles.size()*2);
 	for (int i = 0; i < visible_poles.size(); i++) {
-		R(2*i,2*i) = 0.05;//*0.05;
-		R(2*i+1,2*i+1) = 0.05;//*0.05;
+		R(2*i,2*i) = scan_covariance_;
+		R(2*i+1,2*i+1) = scan_covariance_;
 	}
 	return R;
 }

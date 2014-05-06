@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "sensor_msgs/LaserScan.h"
+#include "sensor_msgs/Imu.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/Point.h"
@@ -21,6 +22,7 @@ class Loc {
 	ros::NodeHandle n_;
 	ros::Subscriber sub_scan_;
 	ros::Subscriber sub_odom_;
+	ros::Subscriber sub_imu_;
 	ros::ServiceServer srv_init_;
 	ros::Publisher pub_pose_;
 	ros::Publisher pub_pole_;
@@ -38,8 +40,12 @@ class Loc {
 	geometry_msgs::PoseWithCovarianceStamped last_pose_;
 	geometry_msgs::PoseStamped initial_pose_;
 	geometry_msgs::Pose pred_pose_;
+	sensor_msgs::Imu last_attitude_;
+	sensor_msgs::Imu attitude_;
 	bool initiation_;
 	ros::Time current_time_;
+	double scan_covariance_;
+	double covariance_expansion_;
 
 	void NormalizeAngle(double& angle);
 	void StateHandler();
@@ -64,6 +70,7 @@ class Loc {
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
 	void OdomCallback(const nav_msgs::Odometry &odom);
 	bool InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res);
+	void ImuCallback(const sensor_msgs::Imu &attitude);
 	void SetInit(const bool &init);
 	//Kalman functions
 	void DoTheKalman();
