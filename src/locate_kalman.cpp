@@ -16,15 +16,11 @@ void Loc::DoTheKalman() {
 
 	//predict
 	if (odom_.pose.pose.position.x != -2000.0 && last_odom_.pose.pose.position.x != -2000.0 && use_odometry_) {
-		const double init_odom_theta = tf::getYaw(initial_odom_.pose.pose.orientation);
 		const double predicted_theta = tf::getYaw(odom_.pose.pose.orientation);
 		const double last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
-		const double init_theta = tf::getYaw(initial_pose_.pose.orientation);
 		const double current_theta = tf::getYaw(pose_.pose.pose.orientation);
 		double dx = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x);
 		double dy = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y);
-		//ROS_INFO("init_odom_theta %f", init_odom_theta);
-		//ROS_INFO("x: %f", odom_.pose.pose.position.x);
 		double theta_delta_robot_cs = predicted_theta - last_theta;
 		const double delta_t_odom = (odom_.header.stamp - last_odom_.header.stamp).toSec();
 		const double delta_t_pose = (current_time_ - pose_.header.stamp).toSec();
@@ -63,6 +59,7 @@ void Loc::DoTheKalman() {
 		double delta_theta = (this_theta - last_theta);
 		NormalizeAngle(delta_theta);
 		delta_theta *= time_scale;
+		ROS_INFO("timescale %f", time_scale);
 		ROS_INFO("v_theta: %f", delta_theta/(current_time_ - pose_.header.stamp).toSec());
 		state[2] += delta_theta/2;
 		state[0] += cos(state[2])*delta_s;
@@ -74,7 +71,7 @@ void Loc::DoTheKalman() {
 		//ROS_INFO("No Odometry data");
 	}
 	else {	//no laser, just enlarge convariance
-		covariance *= 2;
+		covariance *= covariance_expansion_;
 		ROS_INFO("No odom no laser");
 	}
 	//Write prediction so poles can be assigned properly
@@ -102,30 +99,19 @@ void Loc::DoTheKalman() {
 	//write vector and matrix back to ros message
 	last_pose_ = pose_;
 	pose_.header.stamp = current_time_;
-	pose_.pose.pose.position.x = state[0];
-	pose_.pose.pose.position.y = state[1];
+	pose_.pose.pose.position.x = state[0]; // - 0.07*cos(state[2]);
+	pose_.pose.pose.position.y = state[1]; // - 0.07*sin(state[2]);
 	pose_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(state[2]);
 	pose_.pose.covariance[0] = covariance(0,0);
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
-	//ROS_INFO("cov_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
+	//ROS_INFO("cov_end: x %f y %f th %f", pow(covariance(0,0),0.5), pow(covariance(1,1),0.5), pow(covariance(2,2),0.5));
 	//reset odometry
 	if (odom_.pose.pose.position.x != -2000.0) last_odom_ = odom_;
 	odom_.pose.pose.position.x = -2000.0;
 	//reset laser
 	scan_.intensities.clear();
 	scan_.ranges.clear();
-}
-
-Eigen::Vector3d Loc::PredictPositionDelta() {	//currently not used
-	Eigen::Vector3d delta_predict;
-	const double ds = (odom_.pose.pose.position.x+odom_.pose.pose.position.y)/2;
-	const double dth = (odom_.pose.pose.position.x-odom_.pose.pose.position.y)/b;
-	const double theta = tf::getYaw(pose_.pose.pose.orientation);
-	delta_predict[0] = ds*cos(theta + dth/2);
-	delta_predict[1] = ds*sin(theta + dth/2);
-	delta_predict[2] = dth;
-	return delta_predict;
 }
 
 Eigen::Matrix3d Loc::StateJacobi(const double &ds, const double &dth, const double &theta) {

@@ -113,6 +113,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			min_dist = polar_dist;
 			double min_angle = std::abs(scans_to_sort[i].angle - correct_scan.angle);
 			NormalizeAngle(min_angle);
+			min_angle = std::abs(min_angle);
 			ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
 			if (poles_[index].visible()) {
 				if (min_dist < 0.2 && min_angle < 0.1) {

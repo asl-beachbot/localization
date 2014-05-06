@@ -69,11 +69,6 @@ void Loc::PrintPose() {
 	ROS_INFO("Estimate [%f %f] %f rad\n", pose_.pose.pose.position.x, pose_.pose.pose.position.y, tf::getYaw(pose_.pose.pose.orientation));
 }
 
-void Loc::PrintPoleScanData() {
-	for (int i = 0; i < poles_.size(); i++) 
-		if (poles_[i].visible()) ROS_INFO("found pole%d at %f m %f rad", i, poles_[i].laser_coords().distance, poles_[i].laser_coords().angle);
-}
-
 //function to fill the poles with data from the current laser scan
 void Loc::RefreshData() {
 	std::vector<localization::scan_point> locate_scans;	

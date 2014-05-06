@@ -61,7 +61,6 @@ class Loc {
 	void GetPose();
 	void EstimateInvisiblePoles();
 	void PrintPose();
-	void PrintPoleScanData();
 	void CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector);
 	bool IsPolePoint(const double &intensity, const double &distance);
 	void ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points);
@@ -75,7 +74,6 @@ class Loc {
 	//Kalman functions
 	void DoTheKalman();
 	void SetTime();
-	Eigen::Vector3d PredictPositionDelta();
 	Eigen::Matrix3d StateJacobi(const double &ds, const double &dth, const double &theta);
 	Eigen::MatrixXd InputJacobi(const double &ds, const double &dth, const double &theta);
 	Eigen::Matrix2d Q(const double &ds, const double &dth);
