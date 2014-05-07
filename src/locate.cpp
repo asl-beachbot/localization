@@ -24,10 +24,15 @@ Loc::Loc() {
 		scan_covariance_ = 0.02*0.02;
 		ROS_WARN("Didn't find config for scan_covariance_");
 	}
-	if (ros::param::get("covariance_expansion", covariance_expansion_));	//wheel distance of robot
+	if (ros::param::get("k_s", k_s_));	//wheel distance of robot
 	else {
-		covariance_expansion_ = 100;
-		ROS_WARN("Didn't find config for covariance_expansion_");
+		k_s_ = 100;
+		ROS_WARN("Didn't find config for k_s_");
+	}
+	if (ros::param::get("k_th", k_th_));	//wheel distance of robot
+	else {
+		k_th_ = 100;
+		ROS_WARN("Didn't find config for k_th_");
 	}
 	sub_scan_ = n_.subscribe("/output",1, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);

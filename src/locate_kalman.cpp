@@ -49,29 +49,43 @@ void Loc::DoTheKalman() {
 	}
 	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	else if (last_pose_.pose.pose.position.x != -2000 && last_attitude_.orientation.x != -2000) {	
-	//no prediction --> enlarge covariance; use old pose and imu to predict
-		const double time_scale = (current_time_ - pose_.header.stamp).toSec()/(attitude_.header.stamp - last_attitude_.header.stamp).toSec();
-		const double delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x)*time_scale;
-		const double delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
+	//no odometry --> enlarge covariance; use old pose and imu to predict
+		const double delta_t_pose = (current_time_ - pose_.header.stamp).toSec();
+		const double delta_t_imu = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
+		const double delta_t_old = (pose_.header.stamp - last_pose_.header.stamp).toSec();
+		const double time_scale_imu = delta_t_pose/delta_t_imu;
+		const double time_scale_pose = delta_t_pose/delta_t_old;
+		const double delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x);
+		const double delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y);
 		const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
 		const double last_theta = tf::getYaw(last_attitude_.orientation);
 		const double this_theta = tf::getYaw(attitude_.orientation);
+		ROS_INFO("theta %f", this_theta);
 		double delta_theta = (this_theta - last_theta);
-		NormalizeAngle(delta_theta);
-		delta_theta *= time_scale;
-		ROS_INFO("timescale %f", time_scale);
+		NormalizeAngle(delta_theta);	//prevent angle difference error when going from -pi to pi
 		ROS_INFO("v_theta: %f", delta_theta/(current_time_ - pose_.header.stamp).toSec());
-		state[2] += delta_theta/2;
-		state[0] += cos(state[2])*delta_s;
-		state[1] += sin(state[2])*delta_s;
-		state[2] += delta_theta/2;
+		//state update
+		state[2] += delta_theta/2*time_scale_imu;	//use leapfrog to find x,y
+		state[0] += cos(state[2])*delta_s*time_scale_pose;
+		state[1] += sin(state[2])*delta_s*time_scale_pose;
+		//covariance update
+		Eigen::Matrix3d f_x;
+		f_x << 
+			1, 0, -sin(state[2])*delta_s*time_scale_pose,
+			0, 1, cos(state[2])*delta_s*time_scale_pose,
+			0, 0, 1;
+		Eigen::MatrixXd f_u(3,2);
+		f_u(0,0) = cos(state[2])*time_scale_pose; f_u(0,1) = -sin(state[2])*delta_s*time_scale_pose;
+		f_u(1,0) = sin(state[2])*time_scale_pose; f_u(1,1) = cos(state[2])*delta_s*time_scale_pose;
+		f_u(2,0) = 0; f_u(2,1) = time_scale_imu;
+		Eigen::Matrix2d q_t;
+		q_t(0,0) = delta_s*time_scale_pose*k_s_; q_t(0,1) = 0;
+		q_t(1,0) = 0; q_t(1,1) = delta_theta*time_scale_imu*k_th_;
+		covariance = f_x*covariance*f_x.transpose() + f_u*q_t*f_u.transpose();
+		state[2] += delta_theta/2*time_scale_imu;	//second leap frog step later because cov uses intermediate angle
 		ROS_INFO("No odom but laser");
-		covariance *= covariance_expansion_;
-		//covariance(2,2) = attitude_.orientation_covariance[0];
-		//ROS_INFO("No Odometry data");
 	}
 	else {	//no laser, just enlarge convariance
-		covariance *= covariance_expansion_;
 		ROS_INFO("No odom no laser");
 	}
 	//Write prediction so poles can be assigned properly

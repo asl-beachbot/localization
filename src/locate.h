@@ -45,7 +45,8 @@ class Loc {
 	bool initiation_;
 	ros::Time current_time_;
 	double scan_covariance_;
-	double covariance_expansion_;
+	double k_s_;
+	double k_th_;
 
 	void NormalizeAngle(double& angle);
 	void StateHandler();

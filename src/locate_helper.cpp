@@ -9,20 +9,20 @@ void Loc::PublishPoles() {
 	//ROS_INFO("Publishing poles...");
 	int j = 0;
 	for (int i = 0; i < poles_.size(); i++) {
-		//if(poles_[i].visible()) {
+		if(poles_[i].visible()) {
 			geometry_msgs::PointStamped point;
 			point.header.seq = 1;
 			point.header.stamp = current_time_;
-			point.header.frame_id = "fixed_frame";
+			point.header.frame_id = "laser_frame";
 			localization::scan_point temp_point;
 			temp_point = poles_[i].laser_coords();
-			//point.point.x = temp_point.distance * cos(temp_point.angle);
-			//point.point.y = temp_point.distance * sin(temp_point.angle);
-			point.point.x = poles_[i].xy_coords().x;
-			point.point.y = poles_[i].xy_coords().y;
+			point.point.x = temp_point.distance * cos(temp_point.angle);
+			point.point.y = temp_point.distance * sin(temp_point.angle);
+			//point.point.x = poles_[i].xy_coords().x;
+			//point.point.y = poles_[i].xy_coords().y;
 			point.point.z = 0;
 			pub_pole_.publish(point);
-		//}
+		}
 		if (poles_[i].visible()) j++;
 	}
 	ROS_INFO("seeing %d poles\n", j);
