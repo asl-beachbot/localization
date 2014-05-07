@@ -8,7 +8,7 @@ void Loc::InitiatePoles() {
 	double init_duration = 5;
 	while ((ros::Time::now()-begin).sec < init_duration && ros::ok()) {	//gather data for 5 seconds
 		ros::spinOnce();	//get one scan
-		if (std::abs(odom_.twist.twist.linear.x) > 0.01 || std::abs(odom_.twist.twist.angular.z) > 0.02) {
+		if ((std::abs(odom_.twist.twist.linear.x) > 0.01 || std::abs(odom_.twist.twist.angular.z) > 0.02) && use_odometry_) {
 			//Reset initialization if robot move is detected
 			ROS_WARN("Robot moved! Restarting Initialization.");
 			StateHandler();
@@ -54,7 +54,7 @@ void Loc::InitiatePoles() {
 	initial_pose_.header = pose_.header;
 	RefreshData();
 	EstimateInvisiblePoles();
-	PrintPose();
+	//PrintPose();
 	PublishPoles();
 	PublishPose();
 	PublishMap();

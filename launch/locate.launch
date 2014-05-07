@@ -1,9 +1,12 @@
 <launch>
-
+	<node pkg="um6" name="um6_driver" type="um6_driver" output="screen"/>
 	<group ns="localization">
-		<rosparam command="load" file="yaml/config.yaml" />
+		<rosparam command="load" file="$(find localization)/yaml/config.yaml" />
 		<node pkg="localization" name="locate" type="locate" output="screen"/>
 	</group>
+	<node pkg="localization" type="laser_filter" name="laser_filter" output="screen">
+    <rosparam command="load" file="$(find localization)/yaml/laser_config.yaml" />
+  </node>
 
 
 </launch>

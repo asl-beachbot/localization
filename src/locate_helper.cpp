@@ -9,7 +9,7 @@ void Loc::PublishPoles() {
 	//ROS_INFO("Publishing poles...");
 	int j = 0;
 	for (int i = 0; i < poles_.size(); i++) {
-		//if(poles_[i].visible()) {
+		if(poles_[i].visible()) {
 			geometry_msgs::PointStamped point;
 			point.header.seq = 1;
 			point.header.stamp = current_time_;
@@ -18,12 +18,14 @@ void Loc::PublishPoles() {
 			temp_point = poles_[i].laser_coords();
 			point.point.x = temp_point.distance * cos(temp_point.angle);
 			point.point.y = temp_point.distance * sin(temp_point.angle);
+			//point.point.x = poles_[i].xy_coords().x;
+			//point.point.y = poles_[i].xy_coords().y;
 			point.point.z = 0;
 			pub_pole_.publish(point);
-		//}
+		}
 		if (poles_[i].visible()) j++;
 	}
-	ROS_INFO("seeing %d poles", j);
+	ROS_INFO("seeing %d poles\n", j);
 	//ROS_INFO("Success!");
 }
 
@@ -67,14 +69,9 @@ void Loc::PrintPose() {
 	ROS_INFO("Estimate [%f %f] %f rad\n", pose_.pose.pose.position.x, pose_.pose.pose.position.y, tf::getYaw(pose_.pose.pose.orientation));
 }
 
-void Loc::PrintPoleScanData() {
-	for (int i = 0; i < poles_.size(); i++) 
-		if (poles_[i].visible()) ROS_INFO("found pole%d at %f m %f rad", i, poles_[i].laser_coords().distance, poles_[i].laser_coords().angle);
-}
-
 //function to fill the poles with data from the current laser scan
 void Loc::RefreshData() {
-	std::vector<localization::scan_point> locate_scans;	//TODO: put most of the following stuff in callback
+	std::vector<localization::scan_point> locate_scans;	
 	ExtractPoleScans(&locate_scans);	//get relevant scan points
 	CorrectMoveError(&locate_scans);	
 	UpdatePoles(locate_scans);		//assign scans to respective poles

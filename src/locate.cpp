@@ -19,8 +19,24 @@ Loc::Loc() {
 		use_odometry_ = false;
 		ROS_WARN("Didn't find config for use_odometry_");
 	}
-	sub_scan_ = n_.subscribe("/scan",1, &Loc::ScanCallback, this);
+	if (ros::param::get("scan_covariance", scan_covariance_));	//wheel distance of robot
+	else {
+		scan_covariance_ = 0.02*0.02;
+		ROS_WARN("Didn't find config for scan_covariance_");
+	}
+	if (ros::param::get("k_s", k_s_));	//wheel distance of robot
+	else {
+		k_s_ = 100;
+		ROS_WARN("Didn't find config for k_s_");
+	}
+	if (ros::param::get("k_th", k_th_));	//wheel distance of robot
+	else {
+		k_th_ = 100;
+		ROS_WARN("Didn't find config for k_th_");
+	}
+	sub_scan_ = n_.subscribe("/output",1, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
+	sub_imu_ = n_.subscribe("/imu/data",1, &Loc::ImuCallback, this);
 	srv_init_ = n_.advertiseService("initialize_localization", &Loc::InitService, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
@@ -31,6 +47,8 @@ Loc::Loc() {
 	last_pose_.pose.pose.position.x = -2000;	
 	odom_.pose.pose.position.x = -2000;	
 	last_odom_.pose.pose.position.x = -2000;
+	attitude_.orientation.x = -2000;
+	last_attitude_.orientation.x = -2000;
 	ros::spinOnce();	//get initial data
 	StateHandler();
 }
@@ -68,11 +86,16 @@ void Loc::Locate() {
 
 //takes a vector of pole scan data and assigns them to the respective poles
 void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort) {
+	ROS_INFO("pred_movement [%f %f] %frad", pred_pose_.position.x - pose_.pose.pose.position.x, 
+		pred_pose_.position.y - pose_.pose.pose.position.y,
+		tf::getYaw(pred_pose_.orientation) - tf::getYaw(pose_.pose.pose.orientation));
 	if (last_pose_.pose.pose.position.x != -2000 && pose_.pose.pose.position.x != -2000) {
 		for(int i = 0; i < scans_to_sort.size(); i++) {	//find closest pole for every scan
 			double min_dist = 2000000;
+			double polar_dist;
 			localization::scan_point correct_scan;
 			int index = -1;
+			//ROS_INFO("sort_scan_dist %f sort_scan_angle %f", scans_to_sort[i].distance, scans_to_sort[i].angle);
 			for (int j = 0; j < poles_.size(); j++) {
 				const localization::xy_point current_pole = poles_[j].xy_coords();
 				const double dx = current_pole.x - pred_pose_.position.x;
@@ -82,23 +105,27 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 				current_scan.distance = pow(dx * dx + dy * dy, 0.5);
 				const double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
 					+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
+				//ROS_INFO("i %d j %d current_dist %f scan_dist %f scan_angle %f", i, j, current_dist, current_scan.distance, current_scan.angle);
 				if (current_dist < min_dist) {
 					min_dist = current_dist;
 					correct_scan = current_scan;
+					polar_dist = std::abs(scans_to_sort[i].distance - current_scan.distance);
 					index = j;
 				}
 			}
 			assert(index != -1);
-			min_dist = pow(min_dist, 0.5);
+			//min_dist = pow(min_dist, 0.5);
+			min_dist = polar_dist;
 			double min_angle = std::abs(scans_to_sort[i].angle - correct_scan.angle);
 			NormalizeAngle(min_angle);
+			min_angle = std::abs(min_angle);
 			ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
 			if (poles_[index].visible()) {
 				if (min_dist < 0.2 && min_angle < 0.1) {
 					poles_[index].update(scans_to_sort[i], scan_.header.stamp);
 				}
 			}
-			else {//more tolerance if pole wasnt visible
+			else {//more tolerance if pole wasn't visible
 				if (min_dist < 0.4 && min_angle < 0.2) {
 					poles_[index].update(scans_to_sort[i], scan_.header.stamp);		//how close the new measurement has to be to the old one !d²!
 				}
@@ -110,8 +137,6 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 		//PrintPoleScanData();
 	}
 }
-
-
 
 void Loc::EstimateInvisiblePoles() {
 	//ROS_INFO("Estimating poles");
@@ -145,13 +170,16 @@ bool Loc::IsPolePoint(const double &intensity, const double &distance) {
 void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points) {	
 	scan_pole_points->clear();	//clear old scan points
 	for (int i = 0; i < scan_.intensities.size(); i++) {
-		if (IsPolePoint(scan_.intensities[i], scan_.ranges[i])) {
-			localization::scan_point temp;
-			temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
-			temp.angle = (scan_.angle_min+scan_.angle_increment*i);
-			temp.intensity = scan_.intensities[i];
-			//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
-			scan_pole_points->push_back(temp);
+		if(scan_.ranges[i] > scan_.range_min && scan_.ranges[i] < scan_.range_max) {	
+			//if (IsPolePoint(scan_.intensities[i], scan_.ranges[i])) {
+			if (1) {
+				localization::scan_point temp;
+				temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
+				temp.angle = (scan_.angle_min+scan_.angle_increment*i);
+				temp.intensity = scan_.intensities[i];
+				//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
+				scan_pole_points->push_back(temp);
+			}
 		}
 	}
 	MinimizeScans(scan_pole_points);
@@ -212,17 +240,37 @@ void Loc::CorrectMoveError(std::vector<localization::scan_point> *scan_pole_poin
 	if (last_pose_.pose.pose.position.x != -2000 && pose_.pose.pose.position.x != -2000) {	
 		for (int i = 0; i < scan_pole_points->size(); i++) {
 			localization::scan_point temp_point = scan_pole_points->at(i);
-			const double delta_t_old = (pose_.header.stamp - last_pose_.header.stamp).toSec();
 			const int scan_index = (int)(temp_point.angle-scan_.angle_min)/scan_.angle_increment;
 			//ROS_INFO("scan_index %d", scan_index);
 			const double measurement_delay = (scan_.ranges.size() - scan_index)*scan_.time_increment;
-			const double time_scale = measurement_delay/delta_t_old;
-			double delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x)*time_scale;
-			double delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
-			const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
-			const double last_theta = tf::getYaw(last_pose_.pose.pose.orientation);
-			const double current_theta = tf::getYaw(pose_.pose.pose.orientation);
-			const double delta_theta = (current_theta - last_theta)*time_scale;
+			double delta_t_old;
+			double time_scale;
+			double delta_x;
+			double delta_y;
+			double delta_s;
+			double last_theta;
+			double current_theta;
+			if(use_odometry_ && last_odom_.pose.pose.position.x != -2000 && odom_.pose.pose.position.x != -2000) {
+				delta_t_old = (odom_.header.stamp - last_odom_.header.stamp).toSec();
+				time_scale = measurement_delay/delta_t_old;
+				delta_x = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x)*time_scale;
+				delta_y = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y)*time_scale;
+				delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
+				last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
+				current_theta = tf::getYaw(odom_.pose.pose.orientation);
+			}
+			else {
+				delta_t_old = (pose_.header.stamp - last_pose_.header.stamp).toSec();
+				time_scale = measurement_delay/delta_t_old;
+				delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x)*time_scale;
+				delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
+				delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
+				last_theta = tf::getYaw(last_pose_.pose.pose.orientation);
+				current_theta = tf::getYaw(pose_.pose.pose.orientation);
+			}
+			double delta_theta = (current_theta - last_theta);
+			NormalizeAngle(delta_theta);
+			delta_theta *= time_scale;
 			delta_x = delta_s * cos(delta_theta/2);
 			delta_y = delta_s * sin(delta_theta/2);
 			double x_scan = temp_point.distance*cos(temp_point.angle);
@@ -258,6 +306,27 @@ void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
 			initial_odom_.pose.pose.position.x, initial_odom_.pose.pose.position.x, 
 			tf::getYaw(initial_odom_.pose.pose.orientation));*/
 	}
+}
+
+void Loc::ImuCallback(const sensor_msgs::Imu &attitude) {
+	//ROS_INFO("Callback");
+  last_attitude_ = attitude_;	
+  attitude_.header = attitude.header;
+  Eigen::Quaternion<double> rotate_helper;
+  const double x = attitude.orientation.x;
+  const double y = attitude.orientation.y;
+  const double z = attitude.orientation.z;
+  const double w = attitude.orientation.w;
+  rotate_helper = Eigen::Quaternion<double>(w,x,y,z);
+  Eigen::Quaternion<double> rot;
+  rot = Eigen::AngleAxis<double>(M_PI/2, Eigen::Vector3d(0,0,1));
+  rotate_helper *= rot;	//correct weird imu cs
+ 	rot = Eigen::AngleAxis<double>(M_PI/2, Eigen::Vector3d(0,1,0));
+ 	rotate_helper *= rot;	//rotate to sensor mount orientation
+  attitude_.orientation.x = rotate_helper.x();
+  attitude_.orientation.y = rotate_helper.y();
+  attitude_.orientation.z = rotate_helper.z();
+  attitude_.orientation.w = rotate_helper.w();
 }
 
 bool Loc::InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res) {

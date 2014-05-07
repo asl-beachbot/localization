@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "sensor_msgs/LaserScan.h"
+#include "sensor_msgs/Imu.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/Point.h"
@@ -21,6 +22,7 @@ class Loc {
 	ros::NodeHandle n_;
 	ros::Subscriber sub_scan_;
 	ros::Subscriber sub_odom_;
+	ros::Subscriber sub_imu_;
 	ros::ServiceServer srv_init_;
 	ros::Publisher pub_pose_;
 	ros::Publisher pub_pole_;
@@ -38,8 +40,13 @@ class Loc {
 	geometry_msgs::PoseWithCovarianceStamped last_pose_;
 	geometry_msgs::PoseStamped initial_pose_;
 	geometry_msgs::Pose pred_pose_;
+	sensor_msgs::Imu last_attitude_;
+	sensor_msgs::Imu attitude_;
 	bool initiation_;
 	ros::Time current_time_;
+	double scan_covariance_;
+	double k_s_;
+	double k_th_;
 
 	void NormalizeAngle(double& angle);
 	void StateHandler();
@@ -55,7 +62,6 @@ class Loc {
 	void GetPose();
 	void EstimateInvisiblePoles();
 	void PrintPose();
-	void PrintPoleScanData();
 	void CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector);
 	bool IsPolePoint(const double &intensity, const double &distance);
 	void ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points);
@@ -64,14 +70,14 @@ class Loc {
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
 	void OdomCallback(const nav_msgs::Odometry &odom);
 	bool InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res);
+	void ImuCallback(const sensor_msgs::Imu &attitude);
 	void SetInit(const bool &init);
 	//Kalman functions
 	void DoTheKalman();
 	void SetTime();
-	Eigen::Vector3d PredictPositionDelta();
-	Eigen::Matrix3d StateJacobi();
-	Eigen::MatrixXd InputJacobi();
-	Eigen::Matrix2d Q();
+	Eigen::Matrix3d StateJacobi(const double &ds, const double &dth, const double &theta);
+	Eigen::MatrixXd InputJacobi(const double &ds, const double &dth, const double &theta);
+	Eigen::Matrix2d Q(const double &ds, const double &dth);
 	Eigen::VectorXd EstimateReferencePoint(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state);
 	Eigen::MatrixXd EstimateJacobi(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state);
 	Eigen::MatrixXd ErrorMatrix(const std::vector<Pole> &visible_poles);
