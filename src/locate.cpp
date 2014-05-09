@@ -107,6 +107,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 				const double dy = current_pole.y - pred_pose_.position.y;
 				localization::scan_point current_scan;
 				current_scan.angle = atan2(dy, dx) - tf::getYaw(pred_pose_.orientation);
+				NormalizeAngle(current_scan.angle);
 				current_scan.distance = pow(dx * dx + dy * dy, 0.5);
 				const double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
 					+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
@@ -125,6 +126,10 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			NormalizeAngle(min_angle);
 			min_angle = std::abs(min_angle);
 			ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
+			ROS_INFO("measurement %f m %f rad", scans_to_sort[i].distance, scans_to_sort[i].angle);
+			ROS_INFO("pred pole x %f y %f", 
+				scans_to_sort[i].distance*cos(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.x,
+				scans_to_sort[i].distance*sin(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.y);
 			if (poles_[index].visible()) {
 				if (min_dist < 0.2 && min_angle < 0.1) {
 					poles_[index].update(scans_to_sort[i], scan_.header.stamp);
@@ -262,29 +267,17 @@ void Loc::CorrectMoveError(std::vector<localization::scan_point> *scan_pole_poin
 				current_theta = tf::getYaw(odom_.pose.pose.orientation);
 			}
 			else {
-				delta_t_old = (pose_.header.stamp - last_pose_.header.stamp).toSec();
+				delta_t_old = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
 				time_scale = measurement_delay/delta_t_old;
-				delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x)*time_scale;
-				delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
-				delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
-				last_theta = tf::getYaw(last_pose_.pose.pose.orientation);
-				current_theta = tf::getYaw(pose_.pose.pose.orientation);
+				last_theta = tf::getYaw(last_attitude_.orientation);
+				current_theta = tf::getYaw(attitude_.orientation);
 			}
 			double delta_theta = (current_theta - last_theta);
 			NormalizeAngle(delta_theta);
 			delta_theta *= time_scale;
-			delta_x = delta_s * cos(delta_theta/2);
-			delta_y = delta_s * sin(delta_theta/2);
-			double x_scan = temp_point.distance*cos(temp_point.angle);
-			double y_scan = temp_point.distance*sin(temp_point.angle);
-			x_scan -= delta_x;
-			y_scan -= delta_y;
-			const double new_angle = atan2(y_scan, x_scan) - delta_theta;
-			const double new_dist = pow(x_scan * x_scan + y_scan * y_scan, 0.5);
 			//ROS_INFO("Corrected angle from %f to %f", temp_point.angle, new_angle);
 			//ROS_INFO("Corrected distance from %f to %f", temp_point.distance, new_dist);
-			temp_point.angle = new_angle;
-			temp_point.distance = new_dist;
+			temp_point.angle -= delta_theta;
 			scan_pole_points->at(i) = temp_point;
 		}
 	}

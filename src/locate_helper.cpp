@@ -14,6 +14,7 @@ void Loc::PublishPoles() {
 			point.header.seq = 1;
 			point.header.stamp = current_time_;
 			point.header.frame_id = "laser_frame";
+			//point.header.frame_id = "fixed_frame";
 			localization::scan_point temp_point;
 			temp_point = poles_[i].laser_coords();
 			point.point.x = temp_point.distance * cos(temp_point.angle);
@@ -63,6 +64,10 @@ void Loc::PublishTf() {
 	transform.setRotation(tf::Quaternion(quat.x, quat.y, quat.z, quat.w));
 	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "robot_frame"));
 	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "laser_frame"));
+	//transform.setOrigin( tf::Vector3(0.0, 0.0, 0.0));
+	transform.setRotation(tf::Quaternion(attitude_.orientation.x, attitude_.orientation.y, attitude_.orientation.z, attitude_.orientation.w));
+	//br.sendTransform(tf::StampedTransform(transform, current_time_, "robot_frame", "imu_link"));
+	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "imu_link"));
 }
 
 void Loc::PrintPose() {
