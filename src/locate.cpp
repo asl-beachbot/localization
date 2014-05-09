@@ -34,6 +34,11 @@ Loc::Loc() {
 		k_th_ = 100;
 		ROS_WARN("Didn't find config for k_th_");
 	}
+	if (ros::param::get("laser_offset", laser_offset_));	//wheel distance of robot
+	else {
+		laser_offset_ = 0.05;
+		ROS_WARN("Didn't find config for laser_offset");
+	}
 	sub_scan_ = n_.subscribe("/output",1, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
 	sub_imu_ = n_.subscribe("/imu/data",1, &Loc::ImuCallback, this);
@@ -200,7 +205,7 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 				//loop over remaining poles
 				//check if point is last in vector
 				target.push_back(scan->at(i));
-				double max_intensity = 1;	//find closest point in vincinity
+				double min_dist = 100000;	//find max intensity point in vincinity
 				int ppp = 1;
 				if(i+1 != scan->size()) for (int j = i+1; j < scan->size(); j++) {
 					//check already_processed
@@ -210,17 +215,20 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.5
 							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 1.5) {
 							ppp++;
-							if (scan->at(j).intensity > max_intensity) {
-								already_processed.push_back(j);
-								target.back().angle = scan->at(j).angle;
-								target.back().distance = scan->at(j).distance;
-								target.back().intensity = scan->at(j).intensity;
+							already_processed.push_back(j);
+							if (scan->at(j).distance < min_dist) {
+								//min_dist = scan->at(j).distance;
+								target.back().angle += scan->at(j).angle;
+								target.back().distance += scan->at(j).distance;
+								target.back().intensity += scan->at(j).intensity;
 							}
 						}
 					}
 				}
 				already_processed.push_back(i);
-				//average
+				target.back().distance /=ppp; //average
+				target.back().angle /= ppp;
+				target.back().intensity /= ppp;
 				//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
 				if (ppp < threshold) target.pop_back();	//check if more scan points than threshold were gathered
 			}

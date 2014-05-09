@@ -47,6 +47,7 @@ class Loc {
 	double scan_covariance_;
 	double k_s_;
 	double k_th_;
+	double laser_offset_;
 
 	void NormalizeAngle(double& angle);
 	void StateHandler();

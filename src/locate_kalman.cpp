@@ -66,8 +66,8 @@ void Loc::DoTheKalman() {
 		ROS_INFO("v_theta: %f", delta_theta/(current_time_ - pose_.header.stamp).toSec());
 		//state update
 		state[2] += delta_theta/2*time_scale_imu;	//use leapfrog to find x,y
-		state[0] += cos(state[2])*delta_s*time_scale_pose;
-		state[1] += sin(state[2])*delta_s*time_scale_pose;
+		//state[0] += cos(state[2])*delta_s*time_scale_pose;
+		//state[1] += sin(state[2])*delta_s*time_scale_pose;
 		//covariance update
 		Eigen::Matrix3d f_x;
 		f_x << 

@@ -240,8 +240,8 @@ void Loc::CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_ms
   }
   else {	//no Newton if first time
   	//check which pose is the correct one 
-  	const bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 1);
-  	const bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 1);
+  	const bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < M_PI);
+  	const bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < M_PI);
   	assert(first || second);
   	NormalizeAngle(theta1_circle);
   	NormalizeAngle(theta2_circle);
