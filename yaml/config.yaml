@@ -5,7 +5,7 @@ b: 0.264
 laser_offset: 0.05
 use_testing_path: false
 scan_covariance: 0.004
-k_s: 100000000000.0
+k_s: 1000.0
 k_th: 25.0
 
 #fake scan settings

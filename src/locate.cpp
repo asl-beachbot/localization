@@ -126,10 +126,10 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			NormalizeAngle(min_angle);
 			min_angle = std::abs(min_angle);
 			ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
-			ROS_INFO("measurement %f m %f rad", scans_to_sort[i].distance, scans_to_sort[i].angle);
-			ROS_INFO("pred pole x %f y %f", 
-				scans_to_sort[i].distance*cos(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.x,
-				scans_to_sort[i].distance*sin(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.y);
+			//ROS_INFO("measurement %f m %f rad", scans_to_sort[i].distance, scans_to_sort[i].angle);
+			//ROS_INFO("pred pole x %f y %f", 
+			//	scans_to_sort[i].distance*cos(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.x,
+			//	scans_to_sort[i].distance*sin(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.y);
 			if (poles_[index].visible()) {
 				if (min_dist < 0.2 && min_angle < 0.1) {
 					poles_[index].update(scans_to_sort[i], scan_.header.stamp);
@@ -218,7 +218,7 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 					else {
 						//check if close enough
 						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.5
-							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 1.5) {
+							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 0.5) {
 							ppp++;
 							already_processed.push_back(j);
 							if (scan->at(j).distance < min_dist) {
@@ -257,21 +257,10 @@ void Loc::CorrectMoveError(std::vector<localization::scan_point> *scan_pole_poin
 			double delta_s;
 			double last_theta;
 			double current_theta;
-			if(use_odometry_ && last_odom_.pose.pose.position.x != -2000 && odom_.pose.pose.position.x != -2000) {
-				delta_t_old = (odom_.header.stamp - last_odom_.header.stamp).toSec();
-				time_scale = measurement_delay/delta_t_old;
-				delta_x = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x)*time_scale;
-				delta_y = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y)*time_scale;
-				delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
-				last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
-				current_theta = tf::getYaw(odom_.pose.pose.orientation);
-			}
-			else {
-				delta_t_old = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
-				time_scale = measurement_delay/delta_t_old;
-				last_theta = tf::getYaw(last_attitude_.orientation);
-				current_theta = tf::getYaw(attitude_.orientation);
-			}
+			delta_t_old = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
+			time_scale = measurement_delay/delta_t_old;
+			last_theta = tf::getYaw(last_attitude_.orientation);
+			current_theta = tf::getYaw(attitude_.orientation);
 			double delta_theta = (current_theta - last_theta);
 			NormalizeAngle(delta_theta);
 			delta_theta *= time_scale;

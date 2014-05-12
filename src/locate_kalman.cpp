@@ -16,36 +16,39 @@ void Loc::DoTheKalman() {
 
 	//predict
 	if (odom_.pose.pose.position.x != -2000.0 && last_odom_.pose.pose.position.x != -2000.0 && use_odometry_) {
-		const double predicted_theta = tf::getYaw(odom_.pose.pose.orientation);
-		const double last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
-		const double current_theta = tf::getYaw(pose_.pose.pose.orientation);
-		double dx = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x);
-		double dy = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y);
-		double theta_delta_robot_cs = predicted_theta - last_theta;
-		const double delta_t_odom = (odom_.header.stamp - last_odom_.header.stamp).toSec();
 		const double delta_t_pose = (current_time_ - pose_.header.stamp).toSec();
-		assert(delta_t_pose != 0 && delta_t_odom != 0);
-		const double time_scale = delta_t_pose/delta_t_odom;
-		const double delta_s = pow(dx *dx + dy * dy, 0.5)*time_scale;
-		theta_delta_robot_cs *= time_scale;
-		const double x_delta_robot_cs = delta_s * cos(theta_delta_robot_cs/2);
-		const double y_delta_robot_cs = delta_s * sin(theta_delta_robot_cs/2);
-		state[0] += (x_delta_robot_cs * cos(current_theta) + y_delta_robot_cs * sin(current_theta));
-		state[1] += -(x_delta_robot_cs * sin(-current_theta) + y_delta_robot_cs * cos(current_theta));
-		state[2] += theta_delta_robot_cs;
-
-		const double ds = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x) * cos(tf::getYaw(last_odom_.pose.pose.orientation))
-			+ (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y) * sin(tf::getYaw(last_odom_.pose.pose.orientation));
-		const double dth = tf::getYaw(odom_.pose.pose.orientation) - tf::getYaw(last_odom_.pose.pose.orientation);
-		const double theta = tf::getYaw(pose_.pose.pose.orientation);
-		
-		//state += PredictPositionDelta();	//position delta resulting from odometry prediction
-		Eigen::Matrix3d f_x = StateJacobi(ds, dth, theta);
-		covariance = f_x*covariance*f_x.transpose();
-		Eigen::MatrixXd f_u = InputJacobi(ds, dth, theta);
-
-		covariance += f_u*Q(ds, dth)*f_u.transpose();
-		ROS_INFO("everything");
+		const double delta_t_imu = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
+		const double delta_t_old = (odom_.header.stamp - last_odom_.header.stamp).toSec();
+		const double time_scale_imu = delta_t_pose/delta_t_imu;
+		const double time_scale_pose = delta_t_pose/delta_t_old;
+		const double delta_x = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x);
+		const double delta_y = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y);
+		const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
+		const double last_theta = tf::getYaw(last_attitude_.orientation);
+		const double this_theta = tf::getYaw(attitude_.orientation);
+		ROS_INFO("theta %f", this_theta);
+		double delta_theta = (this_theta - last_theta);
+		NormalizeAngle(delta_theta);	//prevent angle difference error when going from -pi to pi
+		ROS_INFO("v_theta: %f", delta_theta/(current_time_ - pose_.header.stamp).toSec());
+		//state update
+		state[2] += delta_theta/2*time_scale_imu;	//use leapfrog to find x,y
+		state[0] += cos(state[2])*delta_s*time_scale_pose;
+		state[1] += sin(state[2])*delta_s*time_scale_pose;
+		//covariance update
+		Eigen::Matrix3d f_x;
+		f_x << 
+			1, 0, -sin(state[2])*delta_s*time_scale_pose,
+			0, 1, cos(state[2])*delta_s*time_scale_pose,
+			0, 0, 1;
+		Eigen::MatrixXd f_u(3,2);
+		f_u(0,0) = cos(state[2])*time_scale_pose; f_u(0,1) = -sin(state[2])*delta_s*time_scale_pose;
+		f_u(1,0) = sin(state[2])*time_scale_pose; f_u(1,1) = cos(state[2])*delta_s*time_scale_pose;
+		f_u(2,0) = 0; f_u(2,1) = time_scale_imu;
+		Eigen::Matrix2d q_t;
+		q_t(0,0) = delta_s*time_scale_pose*k_s_; q_t(0,1) = 0;
+		q_t(1,0) = 0; q_t(1,1) = delta_theta*time_scale_imu*k_th_;
+		covariance = f_x*covariance*f_x.transpose() + f_u*q_t*f_u.transpose();
+		state[2] += delta_theta/2*time_scale_imu;	//second leap frog step later because cov uses intermediate angle
 	}
 	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	else if (last_pose_.pose.pose.position.x != -2000 && last_attitude_.orientation.x != -2000) {	
