@@ -64,10 +64,11 @@ void Loc::PublishTf() {
 	transform.setRotation(tf::Quaternion(quat.x, quat.y, quat.z, quat.w));
 	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "robot_frame"));
 	//transform.setOrigin( tf::Vector3(0.0, 0.0, 0.0));
-	transform.setOrigin( tf::Vector3(0.05, 0, 0.3));
-	tf::Quaternion temp_quat(attitude_.orientation.x, attitude_.orientation.y, 0, attitude_.orientation.w);
-	transform.setRotation(temp_quat.normalized());
-	//br.sendTransform(tf::StampedTransform(transform, current_time_, "robot_frame", "imu_link"));
+	transform.setOrigin( tf::Vector3(0.00, 0, 0.3));
+	tf::Quaternion temp_quat(attitude_.orientation.x, attitude_.orientation.y, attitude_.orientation.z, attitude_.orientation.w);
+	tf::Quaternion dif_quat(tf::createQuaternionFromYaw(tf::getYaw(temp_quat)));
+	temp_quat = dif_quat.inverse()*temp_quat;
+	transform.setRotation(temp_quat);
 	br.sendTransform(tf::StampedTransform(transform, current_time_, "robot_frame", "laser_frame"));
 }
 
