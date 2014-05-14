@@ -187,7 +187,6 @@ void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_poin
 				temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
 				temp.angle = (scan_.angle_min+scan_.angle_increment*i);
 				temp.intensity = scan_.intensities[i];
-				//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
 				scan_pole_points->push_back(temp);
 			}
 		}
@@ -221,12 +220,9 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 0.5) {
 							ppp++;
 							already_processed.push_back(j);
-							if (scan->at(j).distance < min_dist) {
-								//min_dist = scan->at(j).distance;
-								target.back().angle += scan->at(j).angle;
-								target.back().distance += scan->at(j).distance;
-								target.back().intensity += scan->at(j).intensity;
-							}
+							target.back().angle += scan->at(j).angle;
+							target.back().distance += scan->at(j).distance;
+							target.back().intensity += scan->at(j).intensity;
 						}
 					}
 				}
@@ -235,9 +231,9 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 				target.back().angle /= ppp;
 				target.back().intensity /= ppp;
 				//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
+				ROS_INFO("found pole at %frad %fm with intns %f", target.back().distance, target.back().angle, target.back().intensity);
 				if (ppp < threshold) target.pop_back();	//check if more scan points than threshold were gathered
 			}
-			
 		}
 	}
 	*scan = target;
@@ -248,24 +244,15 @@ void Loc::CorrectMoveError(std::vector<localization::scan_point> *scan_pole_poin
 		for (int i = 0; i < scan_pole_points->size(); i++) {
 			localization::scan_point temp_point = scan_pole_points->at(i);
 			const int scan_index = (int)(temp_point.angle-scan_.angle_min)/scan_.angle_increment;
-			//ROS_INFO("scan_index %d", scan_index);
 			const double measurement_delay = (scan_.ranges.size() - scan_index)*scan_.time_increment;
-			double delta_t_old;
-			double time_scale;
-			double delta_x;
-			double delta_y;
-			double delta_s;
-			double last_theta;
-			double current_theta;
-			delta_t_old = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
-			time_scale = measurement_delay/delta_t_old;
-			last_theta = tf::getYaw(last_attitude_.orientation);
-			current_theta = tf::getYaw(attitude_.orientation);
+			const double delta_t_old = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
+			const double time_scale = measurement_delay/delta_t_old;
+			const double last_theta = tf::getYaw(last_attitude_.orientation);
+			const double current_theta = tf::getYaw(attitude_.orientation);
 			double delta_theta = (current_theta - last_theta);
 			NormalizeAngle(delta_theta);
 			delta_theta *= time_scale;
-			//ROS_INFO("Corrected angle from %f to %f", temp_point.angle, new_angle);
-			//ROS_INFO("Corrected distance from %f to %f", temp_point.distance, new_dist);
+			//ROS_INFO("Corrected angle %d by %f with scale %f", i, delta_theta, time_scale);
 			temp_point.angle -= delta_theta;
 			scan_pole_points->at(i) = temp_point;
 		}

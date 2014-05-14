@@ -81,6 +81,6 @@ class Loc {
 	Eigen::Matrix2d Q(const double &ds, const double &dth);
 	Eigen::VectorXd EstimateReferencePoint(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state);
 	Eigen::MatrixXd EstimateJacobi(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state);
-	Eigen::MatrixXd ErrorMatrix(const std::vector<Pole> &visible_poles);
+	Eigen::MatrixXd ErrorMatrix(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state);
 	Eigen::VectorXd CalculateMeasuredPoints(const std::vector<Pole> &visible_poles);
 };
