@@ -15,18 +15,16 @@ void Loc::DoTheKalman() {
 	//ROS_INFO("covariance %f", covariance(0,0));
 
 	//predict
-	if (odom_.pose.pose.position.x != -2000.0 && last_odom_.pose.pose.position.x != -2000.0 && use_odometry_) {
+	if (odom_.timestamp != 0 && last_odom_.timestamp != -0 && use_odometry_) {
 		const double delta_t_pose = (current_time_ - pose_.header.stamp).toSec();
 		const double delta_t_imu = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
-		const double delta_t_old = (odom_.header.stamp - last_odom_.header.stamp).toSec();
+		const double delta_t_old = (odom_.timestamp - last_odom_.timestamp)/1000.0;
 		const double time_scale_imu = delta_t_pose/delta_t_imu;
 		const double time_scale_pose = delta_t_pose/delta_t_old;
-		const double delta_x = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x);
-		const double delta_y = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y);
-		const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
+		const double delta_s = (odom_.deltaUmLeft + odom_.deltaUmRight)/2/1000000.0;
+		ROS_INFO("delta_s_odom %fm", delta_s);
 		const double last_theta = tf::getYaw(last_attitude_.orientation);
 		const double this_theta = tf::getYaw(attitude_.orientation);
-		ROS_INFO("theta %f", this_theta);
 		double delta_theta = (this_theta - last_theta);
 		NormalizeAngle(delta_theta);	//prevent angle difference error when going from -pi to pi
 		ROS_INFO("v_theta: %f", delta_theta/(current_time_ - pose_.header.stamp).toSec());
@@ -41,12 +39,12 @@ void Loc::DoTheKalman() {
 			0, 1, cos(state[2])*delta_s*time_scale_pose,
 			0, 0, 1;
 		Eigen::MatrixXd f_u(3,2);
-		f_u(0,0) = cos(state[2])*time_scale_pose; f_u(0,1) = -sin(state[2])*delta_s*time_scale_pose;
-		f_u(1,0) = sin(state[2])*time_scale_pose; f_u(1,1) = cos(state[2])*delta_s*time_scale_pose;
+		f_u(0,0) = cos(state[2])*time_scale_pose; f_u(0,1) = -0.5*sin(state[2])*delta_s*time_scale_pose;
+		f_u(1,0) = sin(state[2])*time_scale_pose; f_u(1,1) = 0.5*cos(state[2])*delta_s*time_scale_pose;
 		f_u(2,0) = 0; f_u(2,1) = time_scale_imu;
 		Eigen::Matrix2d q_t;
-		q_t(0,0) = delta_s*time_scale_pose*k_s_; q_t(0,1) = 0;
-		q_t(1,0) = 0; q_t(1,1) = delta_theta*time_scale_imu*k_th_;
+		q_t(0,0) = std::abs(delta_s)*time_scale_pose*k_s_; q_t(0,1) = 0;
+		q_t(1,0) = 0; q_t(1,1) = std::abs(delta_theta)*time_scale_imu*k_th_;
 		covariance = f_x*covariance*f_x.transpose() + f_u*q_t*f_u.transpose();
 		state[2] += delta_theta/2*time_scale_imu;	//second leap frog step later because cov uses intermediate angle
 	}
@@ -83,8 +81,8 @@ void Loc::DoTheKalman() {
 		f_u(1,0) = sin(state[2])*time_scale_pose; f_u(1,1) = 0.5*cos(state[2])*delta_s*time_scale_pose;
 		f_u(2,0) = 0; f_u(2,1) = time_scale_imu;
 		Eigen::Matrix2d q_t;
-		q_t(0,0) = delta_s*time_scale_pose*k_s_; q_t(0,1) = 0;
-		q_t(1,0) = 0; q_t(1,1) = delta_theta*time_scale_imu*k_th_;
+		q_t(0,0) = std::abs(delta_s)*time_scale_pose*k_s_; q_t(0,1) = 0;
+		q_t(1,0) = 0; q_t(1,1) = std::abs(delta_theta)*time_scale_imu*k_th_;
 		covariance = f_x*covariance*f_x.transpose();
 		ROS_INFO("action cov interm [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
 		covariance += f_u*q_t*f_u.transpose();
@@ -136,9 +134,6 @@ void Loc::DoTheKalman() {
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
 	ROS_INFO("pose [%f %f] %f rad", state[0], state[1], state[2]);
-	//reset odometry
-	if (odom_.pose.pose.position.x != -2000.0) last_odom_ = odom_;
-	odom_.pose.pose.position.x = -2000.0;
 	//reset laser
 	scan_.intensities.clear();
 	scan_.ranges.clear();
@@ -163,7 +158,7 @@ Eigen::MatrixXd Loc::InputJacobi(const double &ds, const double &dth, const doub
 		return f_u;
 }
 
-Eigen::Matrix2d Loc::Q(const double &ds, const double &dth) {
+/*Eigen::Matrix2d Loc::Q(const double &ds, const double &dth) {
 	const double k1 = 0.07;
 	const double k2 = 0.07;
 	const double s_l = ds - dth*b/2;
@@ -173,7 +168,7 @@ Eigen::Matrix2d Loc::Q(const double &ds, const double &dth) {
 		k1*odom_.pose.pose.position.x, 0,
 		0, k2*odom_.pose.pose.position.y;
 	return q;
-}
+}*/
 
 Eigen::VectorXd Loc::EstimateReferencePoint(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state) {
 	Eigen::VectorXd h_x(visible_poles.size()*2);

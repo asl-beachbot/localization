@@ -40,7 +40,7 @@ Loc::Loc() {
 		ROS_WARN("Didn't find config for laser_offset");
 	}
 	sub_scan_ = n_.subscribe("/output",1, &Loc::ScanCallback, this);
-	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
+	sub_odom_ = n_.subscribe("/io_from_board",1, &Loc::OdomCallback, this);
 	sub_imu_ = n_.subscribe("/imu/data",1, &Loc::ImuCallback, this);
 	srv_init_ = n_.advertiseService("initialize_localization", &Loc::InitService, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
@@ -50,8 +50,8 @@ Loc::Loc() {
 	SetInit(true);	//start with initiation
 	pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 	last_pose_.pose.pose.position.x = -2000;	
-	odom_.pose.pose.position.x = -2000;	
-	last_odom_.pose.pose.position.x = -2000;
+	odom_.timestamp = 0;	
+	last_odom_.timestamp = 0;
 	attitude_.orientation.x = -2000;
 	last_attitude_.orientation.x = -2000;
 	ros::spinOnce();	//get initial data
@@ -269,14 +269,9 @@ void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {
 	//ROS_INFO("scan_ %d", scan_.header.seq);
 }
 
-void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
+void Loc::OdomCallback(const localization::IOFromBoard &odom) {
+	last_odom_ = odom_;
 	odom_ = odom;
-	if (last_odom_.pose.pose.position.x == -2000) {
-		initial_odom_ = odom;
-		/*ROS_INFO("Initial odom pose: [%f %f] %f", 
-			initial_odom_.pose.pose.position.x, initial_odom_.pose.pose.position.x, 
-			tf::getYaw(initial_odom_.pose.pose.orientation));*/
-	}
 }
 
 void Loc::ImuCallback(const sensor_msgs::Imu &attitude) {
@@ -307,8 +302,8 @@ bool Loc::InitService(localization::InitLocalization::Request &req, localization
 		ros::Time begin = ros::Time::now();
 		while(initiation_ && ros::ok() && (ros::Time::now() - begin).sec < 15) {
 			pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
-			odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
-			last_odom_.pose.pose.position.x = -2000;
+			odom_.timestamp = 0;	//for recognition if no odometry data
+			last_odom_.timestamp = 0;
 			poles_.clear();
 			StateHandler();
 		}

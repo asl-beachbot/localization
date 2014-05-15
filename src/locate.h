@@ -6,7 +6,7 @@
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
 #include "localization/InitLocalization.h"
-#include "nav_msgs/Odometry.h"
+#include "localization/IOFromBoard.h"
 #include "localization/beach_map.h"
 #include "tf/transform_datatypes.h"
 #include "tf/transform_broadcaster.h"
@@ -32,9 +32,8 @@ class Loc {
 	double pole_radius;	//radius of reflective poles
 	bool use_odometry_;	//if using pioneer for testing
 	sensor_msgs::LaserScan scan_;
-	nav_msgs::Odometry odom_;
-	nav_msgs::Odometry last_odom_;
-	nav_msgs::Odometry initial_odom_;
+	localization::IOFromBoard odom_;
+	localization::IOFromBoard last_odom_;
 	std::vector<Pole> poles_;
 	geometry_msgs::PoseWithCovarianceStamped pose_;
 	geometry_msgs::PoseWithCovarianceStamped last_pose_;
@@ -69,7 +68,7 @@ class Loc {
 	void CorrectMoveError(std::vector<localization::scan_point> *scan_pole_points);
 	void MinimizeScans(std::vector<localization::scan_point> *scan, const int &threshold = 1);
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
-	void OdomCallback(const nav_msgs::Odometry &odom);
+	void OdomCallback(const localization::IOFromBoard &odom);
 	bool InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res);
 	void ImuCallback(const sensor_msgs::Imu &attitude);
 	void SetInit(const bool &init);
