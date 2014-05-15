@@ -1,11 +1,13 @@
 #localization settings
 use_odometry: false
+#pole_radius: 0.0515
 pole_radius: 0.027
 b: 0.264
+laser_offset: 0.05
 use_testing_path: false
 scan_covariance: 0.004
-k_s: 100.0
-k_th: 100.0
+k_s: 25.0
+k_th: 25.0
 
 #fake scan settings
 xp1: 0.0

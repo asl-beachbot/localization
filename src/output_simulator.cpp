@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PointStamped.h"
+#include "localization/beach_map.h"
 #include "tf/transform_datatypes.h"
 #include <cmath>
 
@@ -20,6 +21,7 @@ class OutputSimulator {
 
 	ros::Publisher pose_pub_;
 	ros::Publisher pole_pub_;
+	ros::Publisher map_pub_;
 	ros::NodeHandle n_;
 	ros::Time begin_;
 
@@ -100,6 +102,25 @@ class OutputSimulator {
 		if (ros::param::get("yp3", yp3_));	
 		if (ros::param::get("xp4", xp4_));	
 		if (ros::param::get("yp4", yp4_));
+		map_pub_ = n_.advertise<localization::beach_map>("/localization/beach_map", 1, true);
+		localization::beach_map map;
+		geometry_msgs::PointStamped pole;
+		pole.header.stamp = ros::Time::now();
+		pole.header.seq = 1;
+		pole.header.frame_id = "fixed_frame";
+		pole.point.x = xp1_;
+		pole.point.y = yp1_;
+		map.poles.push_back(pole);
+		pole.point.x = xp2_;
+		pole.point.y = yp2_;
+		map.poles.push_back(pole);
+		pole.point.x = xp3_;
+		pole.point.y = yp3_;
+		map.poles.push_back(pole);
+		pole.point.x = xp4_;
+		pole.point.y = yp4_;
+		map.poles.push_back(pole);
+		map_pub_.publish(map);
  	}
 
  	~OutputSimulator() {

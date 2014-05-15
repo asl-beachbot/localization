@@ -34,8 +34,13 @@ Loc::Loc() {
 		k_th_ = 100;
 		ROS_WARN("Didn't find config for k_th_");
 	}
+	if (ros::param::get("laser_offset", laser_offset_));	//wheel distance of robot
+	else {
+		laser_offset_ = 0.05;
+		ROS_WARN("Didn't find config for laser_offset");
+	}
 	sub_scan_ = n_.subscribe("/output",1, &Loc::ScanCallback, this);
-	sub_odom_ = n_.subscribe("/odometry",1, &Loc::OdomCallback, this);
+	sub_odom_ = n_.subscribe("/io_from_board",1, &Loc::OdomCallback, this);
 	sub_imu_ = n_.subscribe("/imu/data",1, &Loc::ImuCallback, this);
 	srv_init_ = n_.advertiseService("initialize_localization", &Loc::InitService, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
@@ -45,8 +50,8 @@ Loc::Loc() {
 	SetInit(true);	//start with initiation
 	pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 	last_pose_.pose.pose.position.x = -2000;	
-	odom_.pose.pose.position.x = -2000;	
-	last_odom_.pose.pose.position.x = -2000;
+	odom_.timestamp = 0;	
+	last_odom_.timestamp = 0;
 	attitude_.orientation.x = -2000;
 	last_attitude_.orientation.x = -2000;
 	ros::spinOnce();	//get initial data
@@ -102,6 +107,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 				const double dy = current_pole.y - pred_pose_.position.y;
 				localization::scan_point current_scan;
 				current_scan.angle = atan2(dy, dx) - tf::getYaw(pred_pose_.orientation);
+				NormalizeAngle(current_scan.angle);
 				current_scan.distance = pow(dx * dx + dy * dy, 0.5);
 				const double current_dist = pow(scans_to_sort[i].distance*cos(scans_to_sort[i].angle) - current_scan.distance*cos(current_scan.angle),2)
 					+pow(scans_to_sort[i].distance*sin(scans_to_sort[i].angle) - current_scan.distance*sin(current_scan.angle),2);
@@ -120,6 +126,10 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			NormalizeAngle(min_angle);
 			min_angle = std::abs(min_angle);
 			ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
+			//ROS_INFO("measurement %f m %f rad", scans_to_sort[i].distance, scans_to_sort[i].angle);
+			//ROS_INFO("pred pole x %f y %f", 
+			//	scans_to_sort[i].distance*cos(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.x,
+			//	scans_to_sort[i].distance*sin(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.y);
 			if (poles_[index].visible()) {
 				if (min_dist < 0.2 && min_angle < 0.1) {
 					poles_[index].update(scans_to_sort[i], scan_.header.stamp);
@@ -177,7 +187,6 @@ void Loc::ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_poin
 				temp.distance = scan_.ranges[i] + pole_radius;	//add radius of poles 
 				temp.angle = (scan_.angle_min+scan_.angle_increment*i);
 				temp.intensity = scan_.intensities[i];
-				//ROS_INFO("Found point at %fm %frad", temp.distance, temp.angle);
 				scan_pole_points->push_back(temp);
 			}
 		}
@@ -200,7 +209,7 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 				//loop over remaining poles
 				//check if point is last in vector
 				target.push_back(scan->at(i));
-				double max_intensity = 1;	//find closest point in vincinity
+				double min_dist = 100000;	//find max intensity point in vincinity
 				int ppp = 1;
 				if(i+1 != scan->size()) for (int j = i+1; j < scan->size(); j++) {
 					//check already_processed
@@ -208,29 +217,32 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 					else {
 						//check if close enough
 						if (std::abs((scan->at(i).angle - scan->at(j).angle)*scan->at(i).distance) < 0.5
-							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 1.5) {
+							&& std::abs(scan->at(i).distance - scan->at(j).distance) < 0.5) {
 							ppp++;
-							if (scan->at(j).intensity > max_intensity) {
-								already_processed.push_back(j);
-								target.back().angle = scan->at(j).angle;
-								target.back().distance = scan->at(j).distance;
-								target.back().intensity = scan->at(j).intensity;
-							}
+							already_processed.push_back(j);
+							target.back().angle += scan->at(j).angle;
+							target.back().distance += scan->at(j).distance;
+							target.back().intensity += scan->at(j).intensity;
 						}
 					}
 				}
 				already_processed.push_back(i);
-				//average
+				target.back().distance /=ppp; //average
+				target.back().angle /= ppp;
+				target.back().intensity /= ppp;
 				//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
+<<<<<<< HEAD
 <<<<<<< HEAD
 				target.back().distance /= ppp;
 				target.back().distance += pole_radius;
 				target.back().angle /= ppp;
 =======
 >>>>>>> experimental
+=======
+				ROS_INFO("found pole at %frad %fm with intns %f", target.back().distance, target.back().angle, target.back().intensity);
+>>>>>>> experimental
 				if (ppp < threshold) target.pop_back();	//check if more scan points than threshold were gathered
 			}
-			
 		}
 	}
 	*scan = target;
@@ -241,48 +253,16 @@ void Loc::CorrectMoveError(std::vector<localization::scan_point> *scan_pole_poin
 		for (int i = 0; i < scan_pole_points->size(); i++) {
 			localization::scan_point temp_point = scan_pole_points->at(i);
 			const int scan_index = (int)(temp_point.angle-scan_.angle_min)/scan_.angle_increment;
-			//ROS_INFO("scan_index %d", scan_index);
 			const double measurement_delay = (scan_.ranges.size() - scan_index)*scan_.time_increment;
-			double delta_t_old;
-			double time_scale;
-			double delta_x;
-			double delta_y;
-			double delta_s;
-			double last_theta;
-			double current_theta;
-			if(use_odometry_ && last_odom_.pose.pose.position.x != -2000 && odom_.pose.pose.position.x != -2000) {
-				delta_t_old = (odom_.header.stamp - last_odom_.header.stamp).toSec();
-				time_scale = measurement_delay/delta_t_old;
-				delta_x = (odom_.pose.pose.position.x - last_odom_.pose.pose.position.x)*time_scale;
-				delta_y = (odom_.pose.pose.position.y - last_odom_.pose.pose.position.y)*time_scale;
-				delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
-				last_theta = tf::getYaw(last_odom_.pose.pose.orientation);
-				current_theta = tf::getYaw(odom_.pose.pose.orientation);
-			}
-			else {
-				delta_t_old = (pose_.header.stamp - last_pose_.header.stamp).toSec();
-				time_scale = measurement_delay/delta_t_old;
-				delta_x = (pose_.pose.pose.position.x - last_pose_.pose.pose.position.x)*time_scale;
-				delta_y = (pose_.pose.pose.position.y - last_pose_.pose.pose.position.y)*time_scale;
-				delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
-				last_theta = tf::getYaw(last_pose_.pose.pose.orientation);
-				current_theta = tf::getYaw(pose_.pose.pose.orientation);
-			}
+			const double delta_t_old = (attitude_.header.stamp - last_attitude_.header.stamp).toSec();
+			const double time_scale = measurement_delay/delta_t_old;
+			const double last_theta = tf::getYaw(last_attitude_.orientation);
+			const double current_theta = tf::getYaw(attitude_.orientation);
 			double delta_theta = (current_theta - last_theta);
 			NormalizeAngle(delta_theta);
 			delta_theta *= time_scale;
-			delta_x = delta_s * cos(delta_theta/2);
-			delta_y = delta_s * sin(delta_theta/2);
-			double x_scan = temp_point.distance*cos(temp_point.angle);
-			double y_scan = temp_point.distance*sin(temp_point.angle);
-			x_scan -= delta_x;
-			y_scan -= delta_y;
-			const double new_angle = atan2(y_scan, x_scan) - delta_theta;
-			const double new_dist = pow(x_scan * x_scan + y_scan * y_scan, 0.5);
-			//ROS_INFO("Corrected angle from %f to %f", temp_point.angle, new_angle);
-			//ROS_INFO("Corrected distance from %f to %f", temp_point.distance, new_dist);
-			temp_point.angle = new_angle;
-			temp_point.distance = new_dist;
+			//ROS_INFO("Corrected angle %d by %f with scale %f", i, delta_theta, time_scale);
+			temp_point.angle -= delta_theta;
 			scan_pole_points->at(i) = temp_point;
 		}
 	}
@@ -298,14 +278,9 @@ void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {
 	//ROS_INFO("scan_ %d", scan_.header.seq);
 }
 
-void Loc::OdomCallback(const nav_msgs::Odometry &odom) {
+void Loc::OdomCallback(const localization::IOFromBoard &odom) {
+	last_odom_ = odom_;
 	odom_ = odom;
-	if (last_odom_.pose.pose.position.x == -2000) {
-		initial_odom_ = odom;
-		/*ROS_INFO("Initial odom pose: [%f %f] %f", 
-			initial_odom_.pose.pose.position.x, initial_odom_.pose.pose.position.x, 
-			tf::getYaw(initial_odom_.pose.pose.orientation));*/
-	}
 }
 
 void Loc::ImuCallback(const sensor_msgs::Imu &attitude) {
@@ -336,8 +311,8 @@ bool Loc::InitService(localization::InitLocalization::Request &req, localization
 		ros::Time begin = ros::Time::now();
 		while(initiation_ && ros::ok() && (ros::Time::now() - begin).sec < 15) {
 			pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
-			odom_.pose.pose.position.x = -2000;	//for recognition if no odometry data
-			last_odom_.pose.pose.position.x = -2000;
+			odom_.timestamp = 0;	//for recognition if no odometry data
+			last_odom_.timestamp = 0;
 			poles_.clear();
 			StateHandler();
 		}

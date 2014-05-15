@@ -8,7 +8,7 @@ void Loc::InitiatePoles() {
 	double init_duration = 5;
 	while ((ros::Time::now()-begin).sec < init_duration && ros::ok()) {	//gather data for 5 seconds
 		ros::spinOnce();	//get one scan
-		if ((std::abs(odom_.twist.twist.linear.x) > 0.01 || std::abs(odom_.twist.twist.angular.z) > 0.02) && use_odometry_) {
+		if ((std::abs(odom_.deltaUmLeft) > 10000 || std::abs(odom_.deltaUmRight) > 10000) && use_odometry_) {
 			//Reset initialization if robot move is detected
 			ROS_WARN("Robot moved! Restarting Initialization.");
 			StateHandler();
@@ -240,8 +240,8 @@ void Loc::CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_ms
   }
   else {	//no Newton if first time
   	//check which pose is the correct one 
-  	const bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < 1);
-  	const bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < 1);
+  	const bool first = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta1_circle-b_ang < M_PI);
+  	const bool second = (M_PI + atan2(y1_circle-yp2,x1_circle-xp2)-theta2_circle-b_ang < M_PI);
   	assert(first || second);
   	NormalizeAngle(theta1_circle);
   	NormalizeAngle(theta2_circle);
