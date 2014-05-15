@@ -79,8 +79,8 @@ void Loc::DoTheKalman() {
 			0, 1, cos(state[2])*delta_s*time_scale_pose,
 			0, 0, 1;
 		Eigen::MatrixXd f_u(3,2);
-		f_u(0,0) = cos(state[2])*time_scale_pose; f_u(0,1) = -sin(state[2])*delta_s*time_scale_pose;
-		f_u(1,0) = sin(state[2])*time_scale_pose; f_u(1,1) = cos(state[2])*delta_s*time_scale_pose;
+		f_u(0,0) = cos(state[2])*time_scale_pose; f_u(0,1) = -0.5*sin(state[2])*delta_s*time_scale_pose;
+		f_u(1,0) = sin(state[2])*time_scale_pose; f_u(1,1) = 0.5*cos(state[2])*delta_s*time_scale_pose;
 		f_u(2,0) = 0; f_u(2,1) = time_scale_imu;
 		Eigen::Matrix2d q_t;
 		q_t(0,0) = delta_s*time_scale_pose*k_s_; q_t(0,1) = 0;
@@ -109,7 +109,7 @@ void Loc::DoTheKalman() {
 		Eigen::MatrixXd R = ErrorMatrix(visible_poles, state);
 		Eigen::VectorXd z = CalculateMeasuredPoints(visible_poles);
 		Eigen::MatrixXd Sigma = H*covariance*H.transpose()+R;
-		Eigen::MatrixXd K = covariance*H.transpose()*Sigma.inverse();
+		Eigen::MatrixXd K = covariance*H.transpose()*Sigma.inverse();	//!!!inverse bad?!
 		Eigen::VectorXd nu = z-h_x;
 		std::cout << "h_x\n" << h_x << std::endl;
 		std::cout << "H\n" << H << std::endl;
