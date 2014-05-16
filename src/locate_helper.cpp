@@ -1,4 +1,5 @@
 #include "locate_initiate.cpp"
+#include <algorithm>
 
 void Loc::NormalizeAngle(double& angle) {
   while(angle > M_PI && ros::ok()) angle -= 2*M_PI;
@@ -40,13 +41,17 @@ void Loc::PublishPose() {
 	pub_pose_.publish(temp_pose);
 	//ROS_INFO("delay: %fms", (ros::Time::now()-current_time_).toSec()*1000);
 }
+	
+bool sortByAngle(Pole i, Pole j) {return i.laser_coords().angle < j.laser_coords().angle;}
 
 void Loc::PublishMap() {
 	localization::beach_map beach_map;
-	for (int i = 0; i < poles_.size(); i++) {
+	std::vector<Pole> sorted_poles = poles_;
+	std::sort(sorted_poles.begin(), sorted_poles.end(), sortByAngle);
+	for (int i = 0; i < sorted_poles.size(); i++) {
 		geometry_msgs::PointStamped point;
-		point.point.x = poles_[i].xy_coords().x;
-		point.point.y = poles_[i].xy_coords().y;
+		point.point.x = sorted_poles[i].xy_coords().x;
+		point.point.y = sorted_poles[i].xy_coords().y;
 		beach_map.poles.push_back(point);
 	}
 	beach_map.basestation.pose = pose_.pose.pose;
