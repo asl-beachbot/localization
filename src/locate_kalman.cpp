@@ -46,6 +46,7 @@ void Loc::DoTheKalman() {
 		q_t(0,0) = std::abs(delta_s)*time_scale_pose*k_s_; q_t(0,1) = 0;
 		q_t(1,0) = 0; q_t(1,1) = std::abs(delta_theta)*time_scale_imu*k_th_;
 		covariance = f_x*covariance*f_x.transpose() + f_u*q_t*f_u.transpose();
+		ROS_INFO("action cov [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
 		state[2] += delta_theta/2*time_scale_imu;	//second leap frog step later because cov uses intermediate angle
 	}
 	//ROS_INFO("cov_pred_end: x %f y %f th %f", covariance(0,0), covariance(1,1), covariance(2,2));
@@ -109,17 +110,7 @@ void Loc::DoTheKalman() {
 		Eigen::MatrixXd Sigma = H*covariance*H.transpose()+R;
 		Eigen::MatrixXd K = covariance*H.transpose()*Sigma.inverse();	//!!!inverse bad?!
 		Eigen::VectorXd nu = z-h_x;
-		std::cout << "h_x\n" << h_x << std::endl;
-		std::cout << "H\n" << H << std::endl;
-		std::cout << "R\n" << R << std::endl;
-		std::cout << "z\n" << z << std::endl;
-		std::cout << "nu\n" << nu << std::endl;
-		std::cout << "Sigma\n" << Sigma << std::endl;
-		std::cout << "K\n" << K << std::endl;
-		std::cout << "nu\n" << nu << std::endl;
-		Eigen::Vector3d update = K*nu;
-		std::cout << "update\n" << update << std::endl;
-		state += update;	//update state with measurement
+		state += K*nu;	//update state with measurement
 		covariance -= K*Sigma*K.transpose();	//update covariance with measurement
 	}
 	ROS_INFO("update cov [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
@@ -133,7 +124,7 @@ void Loc::DoTheKalman() {
 	pose_.pose.covariance[0] = covariance(0,0);
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
-	ROS_INFO("pose [%f %f] %f rad", state[0], state[1], state[2]);
+	//ROS_INFO("pose [%f %f] %f rad", state[0], state[1], state[2]);
 	//reset laser
 	scan_.intensities.clear();
 	scan_.ranges.clear();

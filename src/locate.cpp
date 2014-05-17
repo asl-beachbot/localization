@@ -125,7 +125,7 @@ void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort
 			double min_angle = std::abs(scans_to_sort[i].angle - correct_scan.angle);
 			NormalizeAngle(min_angle);
 			min_angle = std::abs(min_angle);
-			ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
+			//ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
 			//ROS_INFO("measurement %f m %f rad", scans_to_sort[i].distance, scans_to_sort[i].angle);
 			//ROS_INFO("pred pole x %f y %f", 
 			//	scans_to_sort[i].distance*cos(scans_to_sort[i].angle+tf::getYaw(pred_pose_.orientation))+pred_pose_.position.x,
@@ -231,7 +231,7 @@ void Loc::MinimizeScans(std::vector<localization::scan_point> *scan, const int &
 				target.back().angle /= ppp;
 				target.back().intensity /= ppp;
 				//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
-				ROS_INFO("found pole at %frad %fm with intns %f", target.back().distance, target.back().angle, target.back().intensity);
+				//ROS_INFO("found pole at %frad %fm with intns %f", target.back().distance, target.back().angle, target.back().intensity);
 				if (ppp < threshold) target.pop_back();	//check if more scan points than threshold were gathered
 			}
 		}
@@ -270,6 +270,7 @@ void Loc::ScanCallback(const sensor_msgs::LaserScan &scan) {
 }
 
 void Loc::OdomCallback(const localization::IOFromBoard &odom) {
+	ROS_INFO("odom: right %d left %d", odom.deltaUmRight, odom.deltaUmLeft);
 	last_odom_ = odom_;
 	odom_ = odom;
 }
