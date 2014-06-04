@@ -39,9 +39,14 @@ Loc::Loc() {
 		laser_offset_ = 0.05;
 		ROS_WARN("Didn't find config for laser_offset");
 	}
+	if (ros::param::get("laser_height", laser_height_));	//wheel distance of robot
+	else {
+		laser_height_ = 0.35;
+		ROS_WARN("Didn't find config for laser_height");
+	}
 	sub_scan_ = n_.subscribe("/output",1, &Loc::ScanCallback, this);
 	sub_odom_ = n_.subscribe("/io_from_board",1, &Loc::OdomCallback, this);
-	sub_imu_ = n_.subscribe("/imu/data",1, &Loc::ImuCallback, this);
+	sub_imu_ = n_.subscribe("/imu/data",5, &Loc::ImuCallback, this);
 	srv_init_ = n_.advertiseService("initialize_localization", &Loc::InitService, this);
 	ROS_INFO("Subscribed to \"scan\" topic");
 	pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>("bot_pose",1000);
@@ -91,9 +96,9 @@ void Loc::Locate() {
 
 //takes a vector of pole scan data and assigns them to the respective poles
 void Loc::UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort) {
-	ROS_INFO("pred_movement [%f %f] %frad", pred_pose_.position.x - pose_.pose.pose.position.x, 
-		pred_pose_.position.y - pose_.pose.pose.position.y,
-		tf::getYaw(pred_pose_.orientation) - tf::getYaw(pose_.pose.pose.orientation));
+	//ROS_INFO("pred_movement [%f %f] %frad", pred_pose_.position.x - pose_.pose.pose.position.x, 
+	//	pred_pose_.position.y - pose_.pose.pose.position.y,
+	//	tf::getYaw(pred_pose_.orientation) - tf::getYaw(pose_.pose.pose.orientation));
 	if (last_pose_.pose.pose.position.x != -2000 && pose_.pose.pose.position.x != -2000) {
 		for(int i = 0; i < scans_to_sort.size(); i++) {	//find closest pole for every scan
 			double min_dist = 2000000;
@@ -277,23 +282,36 @@ void Loc::OdomCallback(const localization::IOFromBoard &odom) {
 
 void Loc::ImuCallback(const sensor_msgs::Imu &attitude) {
 	//ROS_INFO("Callback");
-  last_attitude_ = attitude_;	
-  attitude_.header = attitude.header;
-  Eigen::Quaternion<double> rotate_helper;
-  const double x = attitude.orientation.x;
-  const double y = attitude.orientation.y;
-  const double z = attitude.orientation.z;
-  const double w = attitude.orientation.w;
-  rotate_helper = Eigen::Quaternion<double>(w,x,y,z);
-  Eigen::Quaternion<double> rot;
-  rot = Eigen::AngleAxis<double>(M_PI/2, Eigen::Vector3d(0,0,1));
-  rotate_helper *= rot;	//correct weird imu cs
- 	rot = Eigen::AngleAxis<double>(M_PI/2, Eigen::Vector3d(0,1,0));
- 	rotate_helper *= rot;	//rotate to sensor mount orientation
-  attitude_.orientation.x = rotate_helper.x();
-  attitude_.orientation.y = rotate_helper.y();
-  attitude_.orientation.z = rotate_helper.z();
-  attitude_.orientation.w = rotate_helper.w();
+	last_attitude_ = attitude_;	
+	attitude_.header = attitude.header;
+	Eigen::Quaternion<double> rotate_helper;
+	const double x = attitude.orientation.x;
+	const double y = attitude.orientation.y;
+	const double z = attitude.orientation.z;
+	const double w = attitude.orientation.w;
+	rotate_helper = Eigen::Quaternion<double>(w,x,y,z);
+	Eigen::Quaternion<double> rot;
+	rot = Eigen::AngleAxis<double>(M_PI/2, Eigen::Vector3d(0,0,1));
+	rotate_helper *= rot;	//correct weird imu cs
+	rot = Eigen::AngleAxis<double>(M_PI/2, Eigen::Vector3d(0,1,0));
+	rotate_helper *= rot;	//rotate to sensor mount orientation
+	attitude_.orientation.x = rotate_helper.x();
+	attitude_.orientation.y = rotate_helper.y();
+	attitude_.orientation.z = rotate_helper.z();
+	attitude_.orientation.w = rotate_helper.w();
+	//remove yaw from orientation
+	geometry_msgs::Quaternion temp = attitude_.orientation;
+	tf::Quaternion yaw_quat = tf::createQuaternionFromYaw(tf::getYaw(temp));
+	tf::Quaternion temp_quat;
+	tf::quaternionMsgToTF(temp, temp_quat);
+	temp_quat = yaw_quat.inverse() * temp_quat;
+	tf::quaternionTFToMsg(temp_quat, temp);
+	//Broadcast transform
+	static tf::TransformBroadcaster br;
+	tf::Transform transform;
+	transform.setOrigin( tf::Vector3(0.0, 0.0, laser_height_));
+	transform.setRotation(temp_quat);
+	br.sendTransform(tf::StampedTransform(transform, attitude.header.stamp, "robot_frame", "laser_frame"));
 }
 
 bool Loc::InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res) {

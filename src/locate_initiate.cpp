@@ -1,58 +1,102 @@
 #include "locate_kalman.cpp"
+#include "find_poles.cpp"
+#include <laser_geometry/laser_geometry.h>
+#include "tf/transform_listener.h"
 
 void Loc::InitiatePoles() {
-	ros::Rate loop_rate(25);
-	ros::Time begin = ros::Time::now();
-	std::vector<std::vector<localization::scan_point> > extracted_scan_points;
 	ROS_INFO("Gathering data...");
-	double init_duration = 5;
-	while ((ros::Time::now()-begin).sec < init_duration && ros::ok()) {	//gather data for 5 seconds
+	ros::Rate loop_rate(25);
+	laser_geometry::LaserProjection projector;
+	tf::TransformListener listener;
+	//Read parameters for initial scanning
+	std::string address;
+	double rev_time, roll_min, roll_max, pitch_min, pitch_max;
+	if (ros::param::get("address", address));	//get address from parameters
+	else {
+		address = "dev/ttyUSB0"; ROS_WARN("Did not find config for motor controller address!");
+	}
+	if (ros::param::get("T", rev_time));	//get revolution time
+	else {
+		rev_time = 5; ROS_WARN("Did not find config for revolution time");
+	}
+	if (ros::param::get("roll_min", roll_min));	//get revolution time
+	else {
+		roll_min = -0.175; ROS_WARN("Did not find config for roll_min");
+	}
+	if (ros::param::get("roll_max", roll_max));	//get revolution time
+	else {
+		roll_max = 0.115; ROS_WARN("Did not find config for roll_max");
+	}
+	if (ros::param::get("pitch_min", pitch_min));	//get revolution time
+	else {
+		pitch_min = -0.095; ROS_WARN("Did not find config for pitch_min");
+	}
+	if (ros::param::get("pitch_max", pitch_max));	//get revolution time
+	else {
+		pitch_max = 0.193; ROS_WARN("Did not find config for pitch_max");
+	}
+	const double roll_amp = (roll_max - roll_min) / 2, pitch_amp = (pitch_max - pitch_min) / 2;	//angle amplitudes
+	const double roll_mid = (roll_max + roll_min) / 2, pitch_mid = (pitch_max + pitch_min) / 2;	//angle midpoints
+	//SerialCom *serial_com = new SerialCom(address);	//open serial communication
+	sensor_msgs::PointCloud cloud;
+	ros::Time begin = ros::Time::now();
+	while ((ros::Time::now() - begin).toSec() < (rev_time + 2) && ros::ok()) {	//gather data for T + 2 seconds
 		ros::spinOnce();	//get one scan
-		if ((std::abs(odom_.deltaUmLeft) > 10000 || std::abs(odom_.deltaUmRight) > 10000) && use_odometry_) {
-			//Reset initialization if robot move is detected
-			ROS_WARN("Robot moved! Restarting Initialization.");
-			StateHandler();
+		//add new scan to pointcloud
+		if(!listener.waitForTransform(scan_.header.frame_id,"/robot_frame",
+        scan_.header.stamp + ros::Duration().fromSec(scan_.ranges.size()*scan_.time_increment),
+        ros::Duration(1))){
+     			ROS_WARN("Got no transform");
+     			return;
+  	}
+		sensor_msgs::PointCloud temp_cloud;
+		try {
+			projector.transformLaserScanToPointCloud("/robot_frame",scan_,temp_cloud,listener);
+			cloud.header.stamp = scan_.header.stamp + ros::Duration().fromSec(scan_.ranges.size() * scan_.time_increment);
+			cloud.points.insert(cloud.points.end(), temp_cloud.points.begin(), temp_cloud.points.end());
+			cloud.channels.insert(cloud.channels.end(), temp_cloud.channels.begin(), temp_cloud.channels.end());
 		}
-		std::vector<localization::scan_point> temp_scan_points;
-		ExtractPoleScans(&temp_scan_points);	//extract relevant poles
-		extracted_scan_points.push_back(temp_scan_points);	//save them
+		catch(tf2::ExtrapolationException) {
+			ROS_WARN("Error when extrapolating");			
+		}
+		//set new laser angle
+		const double current = (ros::Time::now() - begin).toSec();
+		const double roll = roll_mid + roll_amp * sin(current / rev_time * 2 * M_PI);
+		const double pitch = pitch_mid + pitch_amp * cos(current / rev_time * 2*  M_PI);
+		const int roll_data = roll * 1000 / M_PI * 180;	//controller wants degree*1000
+		const int pitch_data = pitch * 1000 / M_PI * 180;	
+		std::string data = "roll ";
+		stringstream ss;
+		ss << roll_data << " pitch " << pitch_data;
+		data.append(ss.str());
+		//ROS_INFO("%s", data.c_str());
+		//serial_com->Send(data);
 		loop_rate.sleep();
 	}
-	ROS_INFO("Gathered %lu/%d scans", extracted_scan_points.size(), (int)(25*init_duration));
-	if (extracted_scan_points.size() < 25) {		//check if enough data was gathered
-		extracted_scan_points.clear();	//discard data
-		ROS_WARN("Not enough scans gathered!");
+	//delete serial_com;
+	FindPoles find_poles(cloud);
+	find_poles.CalcPoles();
+	std::vector<Pole::Line> lines = find_poles.GetPoles();
+	if (lines.size() > 1) {
+		for (int i = 0; i < lines.size(); i++) {
+			const double x = lines[i].p.x(); const double y = lines[i].p.y();
+			const double scan_dist = sqrt((x * x) + (y * y));
+			const double scan_angle = atan2(y, x);
+			localization::scan_point scan_point;
+			scan_point.distance = scan_dist;
+			scan_point.angle = scan_angle;
+			Pole temp_pole(lines[i], scan_point, current_time_, i);
+			poles_.push_back(temp_pole);
+		}
+		PublishPoles();
+		SetInit(false);
 	}
-	else {
-		ROS_INFO("Gathered enough scans!");
-		std::vector<localization::scan_point> averaged_scan_points;
-		for (int i = 0; i < extracted_scan_points.size(); i++) {	//combine all vectors of different measurements to one vector
-			for (int j = 0; j < extracted_scan_points[i].size(); j++) {
-				averaged_scan_points.push_back(extracted_scan_points[i][j]);
-			}
-		}
-		MinimizeScans(&averaged_scan_points, 25);		//average over all measurements
-		for (int i = 0; i < averaged_scan_points.size(); i++) {	
-			//ROS_INFO("pole (polar) at %f m %f rad", averaged_scan_points[i].distance, averaged_scan_points[i].angle);
-			//if (i == 0) ROS_INFO("error %f m",averaged_scan_points[i].distance-6.666667);		//check distance errors
-			//if (i == 1) ROS_INFO("error %f m",averaged_scan_points[i].distance-8.91667);
-		}
-		if (averaged_scan_points.size() > 1) {
-			std::vector<localization::xy_point> xy_poles = ScanToXY(averaged_scan_points);
-			//for (int i = 0; i < xy_poles.size(); i++) ROS_INFO("pole (kart.) at [%f %f]", xy_poles[i].x, xy_poles[i].y);	//print poles for debugging
-			for (int i = 0; i < averaged_scan_points.size(); i++) {	//fill pole vector
-				poles_.push_back(Pole(xy_poles[i], averaged_scan_points[i], scan_.header.stamp, i));
-			}
-			PublishPoles();
-			SetInit(false);
-		}
-		else ROS_WARN("Only found %lu poles. At least 2 needed.", averaged_scan_points.size());
-	}
+	else ROS_WARN("Only found %lu poles. At least 2 needed.", lines.size());
 	//get first initial pose for kalman filter
+	RefreshData();
 	GetPose();
 	initial_pose_.pose = pose_.pose.pose;
 	initial_pose_.header = pose_.header;
-	RefreshData();
 	EstimateInvisiblePoles();
 	//PrintPose();
 	PublishPoles();

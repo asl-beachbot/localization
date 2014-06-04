@@ -5,6 +5,7 @@
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
+#include "sensor_msgs/PointCloud.h"
 #include "localization/InitLocalization.h"
 #include "localization/IOFromBoard.h"
 #include "localization/beach_map.h"
@@ -13,6 +14,7 @@
 #include "pole.cpp"
 #include <Eigen/Dense>
 #include <cmath>
+#include <serial_com.h>
 
 class Loc {
  public:
@@ -30,6 +32,7 @@ class Loc {
 
 	double b;	//wheel distance of robot
 	double pole_radius;	//radius of reflective poles
+	double laser_height_;
 	bool use_odometry_;	//if using pioneer for testing
 	sensor_msgs::LaserScan scan_;
 	localization::IOFromBoard odom_;

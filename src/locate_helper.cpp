@@ -27,7 +27,7 @@ void Loc::PublishPoles() {
 		}
 		if (poles_[i].visible()) j++;
 	}
-	ROS_INFO("seeing %d poles\n", j);
+	ROS_INFO("seeing %d poles", j);
 	//ROS_INFO("Success!");
 }
 
