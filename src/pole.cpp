@@ -8,6 +8,16 @@ Pole::Pole(const localization::xy_point &xy_coords, const localization::scan_poi
 	visible_ = true;
 }
 
+Pole::Pole(const Line &line, const localization::scan_point &laser_coords, const ros::Time &t, const unsigned int &i) {
+	xy_coords_.x = line.p.x();
+	xy_coords_.y = line.p.y();
+	line_ = line;
+	laser_coords_ = laser_coords;
+	time_ = t;
+	i_ = i;
+	visible_ = true;
+}
+
 void Pole::update(const localization::scan_point &laser_coords, const ros::Time &t) {
 	time_ = t;
 	laser_coords_ = laser_coords;
