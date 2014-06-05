@@ -63,14 +63,12 @@ void Loc::DoTheKalman() {
 		const double last_theta = tf::getYaw(last_attitude_.orientation);
 		const double this_theta = tf::getYaw(attitude_.orientation);
 		//ROS_INFO("delta_s %f", delta_s);
-		//ROS_INFO("timescale imu %f pose %f", time_scale_imu, time_scale_pose);
+		ROS_INFO("timescale imu %f pose %f", time_scale_imu, time_scale_pose);
 		double delta_theta = (this_theta - last_theta);
 		NormalizeAngle(delta_theta);	//prevent angle difference error when going from -pi to pi
-		//ROS_INFO("v_theta: %f", delta_theta/(attitude_.header.stamp - last_attitude_.header.stamp).toSec());
+		ROS_INFO("v_theta: %f", delta_theta/(attitude_.header.stamp - last_attitude_.header.stamp).toSec());
 		//state update
 		state[2] += delta_theta/2*time_scale_imu;	//use leapfrog to find x,y
-		//state[0] += cos(state[2])*delta_s*time_scale_pose;
-		//state[1] += sin(state[2])*delta_s*time_scale_pose;
 		//covariance update
 		Eigen::Matrix3d f_x;
 		f_x << 
@@ -164,8 +162,8 @@ Eigen::MatrixXd Loc::InputJacobi(const double &ds, const double &dth, const doub
 Eigen::VectorXd Loc::EstimateReferencePoint(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state) {
 	Eigen::VectorXd h_x(visible_poles.size()*2);
 	for (int i = 0; i < visible_poles.size(); i++) {
-		const double xp = visible_poles[i].xy_coords().x;
-		const double yp = visible_poles[i].xy_coords().y;
+		const double xp = visible_poles[i].line().p.x();
+		const double yp = visible_poles[i].line().p.y();
 		h_x[2*i] = cos(state[2])*(xp-state[0])+sin(state[2])*(yp-state[1]);
 		h_x[2*i+1] = -sin(state[2])*(xp-state[0])+cos(state[2])*(yp-state[1]);
 	}
@@ -175,8 +173,8 @@ Eigen::VectorXd Loc::EstimateReferencePoint(const std::vector<Pole> &visible_pol
 Eigen::MatrixXd Loc::EstimateJacobi(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state) {
 	Eigen::MatrixXd H(visible_poles.size()*2, 3);
 	for (int i = 0; i < visible_poles.size(); i++) {
-		const double xp = visible_poles[i].xy_coords().x;
-		const double yp = visible_poles[i].xy_coords().y;
+		const double xp = visible_poles[i].line().p.x();
+		const double yp = visible_poles[i].line().p.y();
 		H(2*i,0) = -cos(state[2]);
 		H(2*i,1) = -sin(state[2]);
 		H(2*i,2) = -sin(state[2])*(xp-state[0])+cos(state[2])*(yp-state[1]);
@@ -190,8 +188,8 @@ Eigen::MatrixXd Loc::EstimateJacobi(const std::vector<Pole> &visible_poles, cons
 Eigen::MatrixXd Loc::ErrorMatrix(const std::vector<Pole> &visible_poles, const Eigen::Vector3d &state) {
 	Eigen::MatrixXd R = Eigen::MatrixXd::Zero(visible_poles.size()*2,visible_poles.size()*2);
 	for (int i = 0; i < visible_poles.size(); i++) {
-		const double xp = visible_poles[i].xy_coords().x;
-		const double yp = visible_poles[i].xy_coords().y;
+		const double xp = visible_poles[i].line().p.x();
+		const double yp = visible_poles[i].line().p.y();
 		const double vis_angle = atan2(yp - state[2], xp - state[1]);
 		R(2*i,2*i) = scan_covariance_ * std::abs(cos(vis_angle));
 		R(2*i+1,2*i+1) = scan_covariance_ * std::abs(sin(vis_angle));
@@ -203,10 +201,8 @@ Eigen::MatrixXd Loc::ErrorMatrix(const std::vector<Pole> &visible_poles, const E
 Eigen::VectorXd Loc::CalculateMeasuredPoints(const std::vector<Pole> &visible_poles) {
 	Eigen::VectorXd z(2*visible_poles.size());
 	for (int i = 0; i < visible_poles.size(); i++) {
-		const double distance = visible_poles[i].laser_coords().distance;
-		const double angle = visible_poles[i].laser_coords().angle;
-		z[2*i] = cos(angle)*distance;
-		z[2*i+1] = sin(angle)*distance;
+		z[2*i] = visible_poles[i].laser_coords().x();
+		z[2*i+1] = visible_poles[i].laser_coords().y();
 	}
 	return z;
 }
