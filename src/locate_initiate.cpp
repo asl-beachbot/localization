@@ -78,6 +78,10 @@ void Loc::InitiatePoles() {
 	find_poles.CalcPoles();
 	std::vector<Pole::Line> lines = find_poles.GetPoles();
 	if (lines.size() > 1) {
+		Eigen::Vector3d translate = lines[0].p;	//translate vector to make pole 0 [0 0]
+		Eigen::Vector3d second = lines[1].p - translate;
+		Eigen::Matrix3d rotate;	//rotate matrix to make pole 1 [x 0]
+		rotate = Eigen::AngleAxis<double>(-atan2(second.y(), second.x()), Eigen::Vector3d::UnitZ());
 		for (int i = 0; i < lines.size(); i++) {
 			const double x = lines[i].p.x(); const double y = lines[i].p.y();
 			const double scan_dist = sqrt((x * x) + (y * y));
@@ -85,6 +89,12 @@ void Loc::InitiatePoles() {
 			localization::scan_point scan_point;
 			scan_point.distance = scan_dist;
 			scan_point.angle = scan_angle;
+			//apply transforms
+			lines[i].p -= translate;
+			lines[i].end -= translate;
+			lines[i].p = rotate * lines[i].p;
+			lines[i].end = rotate * lines[i].end;
+			lines[i].u = rotate * lines[i].u;
 			Pole temp_pole(lines[i], scan_point, current_time_, i);
 			poles_.push_back(temp_pole);
 		}

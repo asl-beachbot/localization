@@ -51,3 +51,7 @@ unsigned int Pole::i() const {
 bool Pole::visible() const {
 	return visible_;
 }
+
+Pole::Line Pole::line() const {
+	return line_;
+}

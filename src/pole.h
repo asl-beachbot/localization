@@ -26,6 +26,7 @@ class Pole {
 	ros::Time time() const;
 	unsigned int i() const;
 	bool visible() const;
+	Line line() const;
 
  private:
 	localization::xy_point xy_coords_;		//xy coordinates of the pole
