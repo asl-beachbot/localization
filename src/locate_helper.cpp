@@ -11,7 +11,7 @@ void Loc::PublishPoles() {
 	int j = 0;
 	visualization_msgs::Marker line_list;
 	for (int i = 0; i < poles_.size(); i++) {
-		line_list.header.stamp = cloud_.header.stamp;
+		line_list.header = cloud_.header;
 		line_list.header.frame_id = "fixed_frame";
 		line_list.ns = "points_and_lines";
 		line_list.action = visualization_msgs::Marker::ADD;
@@ -23,7 +23,6 @@ void Loc::PublishPoles() {
 		line_list.color.a = 1.0;
 		if(poles_[i].visible()) {
 			geometry_msgs::PointStamped point;
-			geometry_msgs::Point start, end;
 			point.header.seq = 1;
 			point.header.stamp = current_time_;
 			point.header.frame_id = "robot_frame";
@@ -33,11 +32,12 @@ void Loc::PublishPoles() {
 			point.point.y = temp_point.y();
 			point.point.z = temp_point.z();
 			pub_pole_.publish(point);
-			start.x = poles_[i].line().p.x(); start.y = poles_[i].line().p.y(); start.z = poles_[i].line().p.z();
-			end.x = poles_[i].line().end.x(); end.y = poles_[i].line().end.y(); end.z = poles_[i].line().end.z();
-			line_list.points.push_back(start);
-			line_list.points.push_back(end);
 		}
+		geometry_msgs::Point start, end;
+		start.x = poles_[i].line().p.x(); start.y = poles_[i].line().p.y(); start.z = poles_[i].line().p.z();
+		end.x = poles_[i].line().end.x(); end.y = poles_[i].line().end.y(); end.z = poles_[i].line().end.z();
+		line_list.points.push_back(start);
+		line_list.points.push_back(end);
 		if (poles_[i].visible()) j++;
 	}
 	pub_marker_.publish(line_list);

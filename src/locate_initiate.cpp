@@ -98,7 +98,7 @@ void Loc::InitiatePoles() {
 
 void Loc::GetPose() {
 	Eigen::Vector2d x(0,0), x_old(2000,2000);
-	while ( (x_old - x).norm() > 0.01) {
+	while ( (x_old - x).norm() > 0.01 && ros::ok() ) {
 		x_old = x;
 		Eigen::MatrixXd jacobi(poles_.size(), 2);
 		Eigen::VectorXd f_x(poles_.size() );

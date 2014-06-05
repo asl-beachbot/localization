@@ -116,9 +116,10 @@ void Loc::UpdatePoles(const std::vector<Eigen::Vector3d> &scans_to_sort) {
 				Eigen::Vector3d current_scan(dx, dy, 0);
 				const double theta = tf::getYaw(pred_pose_.orientation);
 				Eigen::Matrix3d rot;
-				rot = Eigen::AngleAxis<double>(theta, Eigen::Vector3d::UnitZ());
+				rot = Eigen::AngleAxis<double>(-theta, Eigen::Vector3d::UnitZ());
 				current_scan = rot * current_scan;
-				const double current_dist = scans_to_sort[i].x() * current_scan.x() + scans_to_sort[i].y() * current_scan.y();
+				const double current_dist = (scans_to_sort[i].x() - current_scan.x()) * (scans_to_sort[i].x() - current_scan.x())
+					+ (scans_to_sort[i].y() - current_scan.y()) * (scans_to_sort[i].y() - current_scan.y());
 				//ROS_INFO("i %d j %d current_dist %f scan_dist %f scan_angle %f", i, j, current_dist, current_scan.distance, current_scan.angle);
 				if (current_dist < min_dist) {
 					min_dist = current_dist;
@@ -127,9 +128,10 @@ void Loc::UpdatePoles(const std::vector<Eigen::Vector3d> &scans_to_sort) {
 				}
 			}
 			assert(index != -1);
-			double min_angle = atan2(scans_to_sort[i].y() - correct_scan.y(), scans_to_sort[i].x() - correct_scan.x() );
+			double min_angle = atan2(scans_to_sort[i].y(), scans_to_sort[i].x() ) - atan2(correct_scan.y(), correct_scan.x() );
 			NormalizeAngle(min_angle);
 			min_angle = std::abs(min_angle);
+			ROS_INFO("min dist %f min angle %f", min_dist, min_angle);
 			if (poles_[index].visible()) {
 				if (min_dist < 0.2*0.2 && min_angle < 0.1) {
 					poles_[index].update(scans_to_sort[i], cloud_.header.stamp);
@@ -204,8 +206,8 @@ void Loc::MinimizeScans(std::vector<Eigen::Vector3d> *scan) {
 				target.back().x /= ppp; //average
 				target.back().y /= ppp;
 				target.back().z /= ppp;
-				//ROS_INFO("Found %d point/s for pole %d", ppp, i+1);
-				//ROS_INFO("found pole at %frad %fm with intns %f", target.back().distance, target.back().angle, target.back().intensity);
+				//ROS_INFO("Found %d point/s for pole %d", ppp, i);
+				//ROS_INFO("Pole %d minimized [%f %f %f]", i, target.back().x, target.back().y, target.back().z);
 			}
 		}
 	}
