@@ -130,22 +130,19 @@ void Loc::UpdatePoles(const std::vector<Eigen::Vector3d> &scans_to_sort) {
 			double min_angle = atan2(scans_to_sort[i].y() - correct_scan.y(), scans_to_sort[i].x() - correct_scan.x() );
 			NormalizeAngle(min_angle);
 			min_angle = std::abs(min_angle);
-			//ROS_INFO("pole %d min_dist %f min_angle %f", index, min_dist, min_angle);
-			//ROS_INFO("measurement %f m %f rad", scans_to_sort[i].distance, scans_to_sort[i].angle);
-			//ROS_INFO("pred pole x %f y %f", 
 			if (poles_[index].visible()) {
 				if (min_dist < 0.2*0.2 && min_angle < 0.1) {
 					poles_[index].update(scans_to_sort[i], cloud_.header.stamp);
 				}
 			}
 			else {//more tolerance if pole wasn't visible
-				if (min_dist < 0.4 && min_angle < 0.2) {
+				if (min_dist < 0.4*0.4 && min_angle < 0.2) {
 					poles_[index].update(scans_to_sort[i], cloud_.header.stamp);		//how close the new measurement has to be to the old one !d²!
 				}
 			}
 		}
 		for (int i = 0; i < poles_.size(); i++) {	//hide all missing poles
-			if (poles_[i].time() != scan_.header.stamp) poles_[i].disappear();
+			if (poles_[i].time() != cloud_.header.stamp) poles_[i].disappear();
 		}
 		//PrintPoleScanData();
 	}

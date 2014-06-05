@@ -62,7 +62,7 @@ void Loc::DoTheKalman() {
 		const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
 		const double last_theta = tf::getYaw(last_attitude_.orientation);
 		const double this_theta = tf::getYaw(attitude_.orientation);
-		//ROS_INFO("delta_s %f", delta_s);
+		ROS_INFO("delta_s %f", delta_s);
 		ROS_INFO("timescale imu %f pose %f", time_scale_imu, time_scale_pose);
 		double delta_theta = (this_theta - last_theta);
 		NormalizeAngle(delta_theta);	//prevent angle difference error when going from -pi to pi
@@ -83,9 +83,9 @@ void Loc::DoTheKalman() {
 		q_t(0,0) = std::abs(delta_s)*time_scale_pose*k_s_; q_t(0,1) = 0;
 		q_t(1,0) = 0; q_t(1,1) = std::abs(delta_theta)*time_scale_imu*k_th_;
 		covariance = f_x*covariance*f_x.transpose();
-		//ROS_INFO("action cov interm [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
+		ROS_INFO("action cov interm [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
 		covariance += f_u*q_t*f_u.transpose();
-		//ROS_INFO("action cov end [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
+		ROS_INFO("action cov end [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
 		state[2] += delta_theta/2*time_scale_imu;	//second leap frog step later because cov uses intermediate angle
 		//ROS_INFO("No odom but laser");
 	}
@@ -108,21 +108,22 @@ void Loc::DoTheKalman() {
 		Eigen::MatrixXd Sigma = H*covariance*H.transpose()+R;
 		Eigen::MatrixXd K = covariance*H.transpose()*Sigma.inverse();	//!!!inverse bad?!
 		Eigen::VectorXd nu = z-h_x;
+		cout << "\n" << nu << "\n";
 		state += K*nu;	//update state with measurement
 		covariance -= K*Sigma*K.transpose();	//update covariance with measurement
 	}
-	//ROS_INFO("update cov [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
+	ROS_INFO("update cov [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	
 	//write vector and matrix back to ros message
 	last_pose_ = pose_;
 	pose_.header.stamp = current_time_;
-	pose_.pose.pose.position.x = state[0]; // - 0.07*cos(state[2]);
-	pose_.pose.pose.position.y = state[1]; // - 0.07*sin(state[2]);
+	pose_.pose.pose.position.x = state[0];
+	pose_.pose.pose.position.y = state[1];
 	pose_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(state[2]);
 	pose_.pose.covariance[0] = covariance(0,0);
 	pose_.pose.covariance[7] = covariance(1,1);
 	pose_.pose.covariance[35] = covariance(2,2);
-	//ROS_INFO("pose [%f %f] %f rad", state[0], state[1], state[2]);
+	ROS_INFO("pose [%f %f] %f rad", state[0], state[1], state[2]);
 	//reset laser
 	scan_.intensities.clear();
 	scan_.ranges.clear();
@@ -191,8 +192,8 @@ Eigen::MatrixXd Loc::ErrorMatrix(const std::vector<Pole> &visible_poles, const E
 		const double xp = visible_poles[i].line().p.x();
 		const double yp = visible_poles[i].line().p.y();
 		const double vis_angle = atan2(yp - state[2], xp - state[1]);
-		R(2*i,2*i) = scan_covariance_ * std::abs(cos(vis_angle));
-		R(2*i+1,2*i+1) = scan_covariance_ * std::abs(sin(vis_angle));
+		R(2*i,2*i) = scan_covariance_ * cos(vis_angle) * cos(vis_angle);
+		R(2*i+1,2*i+1) = scan_covariance_ * sin(vis_angle) * sin(vis_angle);
 		//TODO: maybe add variance due to limited angular resolution. Might be fine without due to averaging
 	}
 	return R;

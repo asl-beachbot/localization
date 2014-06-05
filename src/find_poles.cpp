@@ -94,7 +94,7 @@ class FindPoles {
  				if (z > max_z) max_z = z;
  			}
  			mean /= cloud_size;
- 			ROS_INFO("mean point for pole %d \t[%f %f %f]", i, mean.x(), mean.y(), mean.z());
+ 			//ROS_INFO("mean point for pole %d \t[%f %f %f]", i, mean.x(), mean.y(), mean.z());
  			Pole::Line temp_line;
  			temp_line.p = mean;
  			lines_.push_back(temp_line);	//add mean point as base point for line
@@ -115,17 +115,17 @@ class FindPoles {
  			}
  			Eigen::Vector3d u = eigenvectors.col(biggest_index);
  			if (u.z() < 0) u *= -1;	//make direction point up
- 			ROS_INFO("direction for pole %d \t[%f %f %f]", i, u.x(), u.y(), u.z());
+ 			//ROS_INFO("direction for pole %d \t[%f %f %f]", i, u.x(), u.y(), u.z());
  			lines_.back().u = u;
  			//find real base of pole
  			const double scale_min = (min_z - lines_[i].p.z())/lines_[i].u.z();
  			const Eigen::Vector3d new_base = lines_[i].p + scale_min*lines_[i].u;
- 			ROS_INFO("New base for pole %d \t[%f %f %f]", i, new_base.x(), new_base.y(), new_base.z());
+ 			//ROS_INFO("New base for pole %d \t[%f %f %f]", i, new_base.x(), new_base.y(), new_base.z());
  			lines_.back().p = new_base;
  			//find top end of pole
  			const double scale_max = (max_z - lines_[i].p.z())/lines_[i].u.z();
  			const Eigen::Vector3d new_end = lines_[i].p + scale_max*lines_[i].u;
- 			ROS_INFO("New end for pole %d \t[%f %f %f]", i, new_end.x(), new_end.y(), new_end.z());
+ 			//ROS_INFO("New end for pole %d \t[%f %f %f]", i, new_end.x(), new_end.y(), new_end.z());
  			lines_.back().end = new_end;
  		}
  	}
