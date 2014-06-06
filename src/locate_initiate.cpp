@@ -50,7 +50,7 @@ void Loc::InitiatePoles() {
 		const double pitch = pitch_mid + pitch_amp * cos(current / rev_time * 2*  M_PI);
 		const int roll_data = roll * 1000 / M_PI * 180;	//controller wants degree*1000
 		const int pitch_data = pitch * 1000 / M_PI * 180;	
-		std::string data = "roll ";
+		std::string data = "set roll ";
 		stringstream ss;
 		ss << roll_data << " pitch " << pitch_data;
 		data.append(ss.str());
