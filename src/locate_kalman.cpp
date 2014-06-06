@@ -62,11 +62,11 @@ void Loc::DoTheKalman() {
 		const double delta_s = pow(delta_x * delta_x + delta_y * delta_y, 0.5);
 		const double last_theta = tf::getYaw(last_attitude_.orientation);
 		const double this_theta = tf::getYaw(attitude_.orientation);
-		ROS_INFO("delta_s %f", delta_s);
-		ROS_INFO("timescale imu %f pose %f", time_scale_imu, time_scale_pose);
+		//ROS_INFO("delta_s %f", delta_s);
+		//ROS_INFO("timescale imu %f pose %f", time_scale_imu, time_scale_pose);
 		double delta_theta = (this_theta - last_theta);
 		NormalizeAngle(delta_theta);	//prevent angle difference error when going from -pi to pi
-		ROS_INFO("v_theta: %f", delta_theta/(attitude_.header.stamp - last_attitude_.header.stamp).toSec());
+		//ROS_INFO("v_theta: %f", delta_theta/(attitude_.header.stamp - last_attitude_.header.stamp).toSec());
 		//state update
 		state[2] += delta_theta/2*time_scale_imu;	//use leapfrog to find x,y
 		//covariance update
@@ -83,9 +83,9 @@ void Loc::DoTheKalman() {
 		q_t(0,0) = std::abs(delta_s)*time_scale_pose*k_s_; q_t(0,1) = 0;
 		q_t(1,0) = 0; q_t(1,1) = std::abs(delta_theta)*time_scale_imu*k_th_;
 		covariance = f_x*covariance*f_x.transpose();
-		ROS_INFO("action cov interm [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
+		//ROS_INFO("action cov interm [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
 		covariance += f_u*q_t*f_u.transpose();
-		ROS_INFO("action cov end [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
+		//ROS_INFO("action cov end [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
 		state[2] += delta_theta/2*time_scale_imu;	//second leap frog step later because cov uses intermediate angle
 		//ROS_INFO("No odom but laser");
 	}
@@ -108,11 +108,10 @@ void Loc::DoTheKalman() {
 		Eigen::MatrixXd Sigma = H*covariance*H.transpose()+R;
 		Eigen::MatrixXd K = covariance*H.transpose()*Sigma.inverse();	//!!!inverse bad?!
 		Eigen::VectorXd nu = z-h_x;
-		cout << "\n" << nu << "\n";
 		state += K*nu;	//update state with measurement
 		covariance -= K*Sigma*K.transpose();	//update covariance with measurement
 	}
-	ROS_INFO("update cov [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
+	//ROS_INFO("update cov [%f %f] %f", covariance(0,0), covariance(1,1), covariance(2,2));
 	
 	//write vector and matrix back to ros message
 	last_pose_ = pose_;
@@ -127,6 +126,7 @@ void Loc::DoTheKalman() {
 	//reset laser
 	scan_.intensities.clear();
 	scan_.ranges.clear();
+	last_attitude_ = attitude_;
 }
 
 Eigen::Matrix3d Loc::StateJacobi(const double &ds, const double &dth, const double &theta) {

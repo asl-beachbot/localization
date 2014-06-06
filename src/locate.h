@@ -32,6 +32,7 @@ class Loc {
 	ros::Publisher pub_pole_;
 	ros::Publisher pub_map_;
 	ros::Publisher pub_marker_;
+	ros::Publisher pub_cloud_;
 
 	double b;	//wheel distance of robot
 	double pole_radius;	//radius of reflective poles
@@ -63,6 +64,7 @@ class Loc {
 	void PublishPose();
 	void PublishMap();
 	void PublishTf();
+	void PublishCloud(const sensor_msgs::PointCloud &cloud);
 	void Locate();
 	void RefreshData();
 	void UpdatePoles(const std::vector<Eigen::Vector3d> &scans_to_sort);

@@ -11,7 +11,7 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${TinyXML_INCLUDE_DIRS})
 include_directories(${Eigen_INCLUDE_DIRS})
 
 ## Declare ROS messages and services
-add_message_files(DIRECTORY msg FILES xy_vector.msg scan_vector.msg scan_point.msg xy_point.msg beach_map.msg)
+add_message_files(DIRECTORY msg FILES xy_vector.msg scan_vector.msg scan_point.msg xy_point.msg beach_map.msg line.msg)
 add_message_files(DIRECTORY include FILES IOFromBoard.msg)
 add_service_files(DIRECTORY srv FILES InitLocalization.srv)
 

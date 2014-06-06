@@ -53,6 +53,7 @@ Loc::Loc() {
 	pub_pole_ = n_.advertise<geometry_msgs::PointStamped>("pole_pos",1000);
 	pub_map_ = n_.advertise<localization::beach_map>("beach_map",1000,true);
 	pub_marker_ = n_.advertise<visualization_msgs::Marker>("/lines", 10, true);
+	pub_cloud_ = n_.advertise<sensor_msgs::PointCloud>("/cloud", 1, true);
 	SetInit(true);	//start with initiation
 	pose_.pose.pose.position.x = -2000;	//for recognition if first time calculating
 	last_pose_.pose.pose.position.x = -2000;	
@@ -88,6 +89,7 @@ void Loc::Locate() {
 	//RefreshData();
 	ros::spinOnce();
 	ScanToCloud();
+	PublishCloud(cloud_);
 	if (!scan_.ranges.empty()) DoTheKalman();
 	PublishPose();
 	EstimateInvisiblePoles();
@@ -113,7 +115,8 @@ void Loc::UpdatePoles(const std::vector<Eigen::Vector3d> &scans_to_sort) {
 				const Eigen::Vector3d current_pole = poles_[j].line().p;
 				const double dx = current_pole.x() - pred_pose_.position.x;
 				const double dy = current_pole.y() - pred_pose_.position.y;
-				Eigen::Vector3d current_scan(dx, dy, 0);
+				const double dz = current_pole.z() - pred_pose_.position.z;
+				Eigen::Vector3d current_scan(dx, dy, dz);
 				const double theta = tf::getYaw(pred_pose_.orientation);
 				Eigen::Matrix3d rot;
 				rot = Eigen::AngleAxis<double>(-theta, Eigen::Vector3d::UnitZ());
@@ -129,6 +132,8 @@ void Loc::UpdatePoles(const std::vector<Eigen::Vector3d> &scans_to_sort) {
 			}
 			assert(index != -1);
 			double min_angle = atan2(scans_to_sort[i].y(), scans_to_sort[i].x() ) - atan2(correct_scan.y(), correct_scan.x() );
+			ROS_INFO("current_scan [%f %f %f]", scans_to_sort[i].x(), scans_to_sort[i].y(), scans_to_sort[i].z());
+			ROS_INFO("correct_scan [%f %f %f]", correct_scan.x(), correct_scan.y(), correct_scan.z());
 			NormalizeAngle(min_angle);
 			min_angle = std::abs(min_angle);
 			ROS_INFO("min dist %f min angle %f", min_dist, min_angle);
@@ -198,7 +203,7 @@ void Loc::MinimizeScans(std::vector<Eigen::Vector3d> *scan) {
 							already_processed.push_back(j);
 							target.back().x += cloud_.points.at(j).x;
 							target.back().y += cloud_.points.at(j).y;
-							target.back().y += cloud_.points.at(j).z;
+							target.back().z += cloud_.points.at(j).z;
 						}
 					}
 				}
@@ -274,7 +279,6 @@ void Loc::OdomCallback(const localization::IOFromBoard &odom) {
 
 void Loc::ImuCallback(const sensor_msgs::Imu &attitude) {
 	//ROS_INFO("Callback");
-	last_attitude_ = attitude_;	
 	attitude_.header = attitude.header;
 	Eigen::Quaternion<double> rotate_helper;
 	const double x = attitude.orientation.x;

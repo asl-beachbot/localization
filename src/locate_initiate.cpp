@@ -37,11 +37,13 @@ void Loc::InitiatePoles() {
 	//SerialCom *serial_com = new SerialCom(address);	//open serial communication
 	sensor_msgs::PointCloud cloud;
 	ros::Time begin = ros::Time::now();
-	while ((ros::Time::now() - begin).toSec() < (rev_time + 2) && ros::ok()) {	//gather data for T + 2 seconds
+	while ((ros::Time::now() - begin).toSec() < (rev_time + 1) && ros::ok()) {	//gather data for T + 2 seconds
 		ros::spinOnce();	//get one scan and corresponding pointcloud
 		ScanToCloud();
 		cloud.points.insert(cloud.points.end(), cloud_.points.begin(), cloud_.points.end());
 		cloud.channels.insert(cloud.channels.end(), cloud_.channels.begin(), cloud_.channels.end());
+		cloud.header = cloud_.header;
+		PublishCloud(cloud);
 		//set new laser angle
 		const double current = (ros::Time::now() - begin).toSec();
 		const double roll = roll_mid + roll_amp * sin(current / rev_time * 2 * M_PI);
@@ -57,6 +59,7 @@ void Loc::InitiatePoles() {
 		loop_rate.sleep();
 	}
 	//serial_com->Send("roll 0 pitch 0");	//reset laser pose ot start localization and control
+	ros::Duration(1.0).sleep();	//give suspension time to go to zero position
 	//delete serial_com;
 	FindPoles find_poles(cloud);
 	find_poles.CalcPoles();

@@ -45,6 +45,10 @@ void Loc::PublishPoles() {
 	//ROS_INFO("Success!");
 }
 
+void Loc::PublishCloud(const sensor_msgs::PointCloud &cloud) {
+	pub_cloud_.publish(cloud);
+}
+
 void Loc::PublishPose() {
 	//ROS_INFO("Publishing pose...");
 	geometry_msgs::PoseStamped temp_pose;
@@ -69,6 +73,18 @@ void Loc::PublishMap() {
 		point.point.y = sorted_poles[i].line().p.y();
 		point.point.z = sorted_poles[i].line().p.z();
 		beach_map.poles.push_back(point);
+		localization::line line;
+		line.p.x = sorted_poles[i].line().p.x();
+		line.p.y = sorted_poles[i].line().p.y();
+		line.p.z = sorted_poles[i].line().p.z();
+		line.u.x = sorted_poles[i].line().u.x();
+		line.u.y = sorted_poles[i].line().u.y();
+		line.u.z = sorted_poles[i].line().u.z();
+		line.end.x = sorted_poles[i].line().end.x();
+		line.end.y = sorted_poles[i].line().end.y();
+		line.end.z = sorted_poles[i].line().end.z();
+		line.d = sorted_poles[i].line().d;
+		beach_map.lines.push_back(line);
 	}
 	beach_map.basestation.pose = pose_.pose.pose;
 	double yaw = tf::getYaw(beach_map.basestation.pose.orientation);
@@ -84,13 +100,6 @@ void Loc::PublishTf() {
 	geometry_msgs::Quaternion quat = pose_.pose.pose.orientation;
 	transform.setRotation(tf::Quaternion(quat.x, quat.y, quat.z, quat.w));
 	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "robot_frame"));
-	//transform.setOrigin( tf::Vector3(0.0, 0.0, 0.0));
-	transform.setOrigin( tf::Vector3(0.00, 0, 0.3));
-	tf::Quaternion temp_quat(attitude_.orientation.x, attitude_.orientation.y, attitude_.orientation.z, attitude_.orientation.w);
-	tf::Quaternion dif_quat(tf::createQuaternionFromYaw(tf::getYaw(temp_quat)));
-	temp_quat = dif_quat.inverse()*temp_quat;
-	transform.setRotation(temp_quat);
-	br.sendTransform(tf::StampedTransform(transform, current_time_, "robot_frame", "laser_frame"));
 }
 
 void Loc::PrintPose() {
