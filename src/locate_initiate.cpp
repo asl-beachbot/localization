@@ -1,6 +1,7 @@
 #include "locate_kalman.cpp"
 #include "find_poles.cpp"
 #include <laser_geometry/laser_geometry.h>
+#include <localization/serial_com.h>
 
 void Loc::InitiatePoles() {
 	ROS_INFO("Gathering data...");

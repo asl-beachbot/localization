@@ -61,8 +61,7 @@ class SerialCom {
     ser.setPort(addr);
     ser.setBaudrate(115200);
     ser.open();
-    ROS_INFO("baud rate is %d, should be %d default is %d", serial_port.BaudRate(), LibSerial::SerialStreamBuf::BAUD_115200, 
-      LibSerial::SerialStreamBuf::DEFAULT_BAUD);
+    ROS_INFO("baud rate enum is %d, should be %d", serial_port.BaudRate(), LibSerial::SerialStreamBuf::BAUD_115200);
   }
 
   void Close() {

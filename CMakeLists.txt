@@ -5,7 +5,7 @@ project(localization)
 ## Find catkin and any catkin packages
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(Eigen REQUIRED)
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs geometry_msgs genmsg tf cmake_modules pluginlib laser_geometry serial)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs geometry_msgs genmsg tf cmake_modules pluginlib laser_geometry serial )
 find_package(TinyXML REQUIRED)
 include_directories(include ${catkin_INCLUDE_DIRS} ${TinyXML_INCLUDE_DIRS})
 include_directories(${Eigen_INCLUDE_DIRS})
@@ -49,6 +49,6 @@ target_link_libraries(laser_filter ${catkin_LIBRARIES} ${TinyXML_LIBRARIES})
 add_dependencies(laser_filter testing_gencpp)
 
 ## Declare a catkin package
-catkin_package()
+catkin_package(INCLUDE_DIRS include)
 
 # %EndTag(FULLTEXT)%

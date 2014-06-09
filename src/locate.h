@@ -16,7 +16,6 @@
 #include "pole.cpp"
 #include <Eigen/Dense>
 #include <cmath>
-#include <serial_com.h>
 
 class Loc {
  public:
