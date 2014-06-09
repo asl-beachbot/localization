@@ -1,0 +1,15 @@
+<launch>
+	<remap from="imu_link" to="laser_frame" />
+	<group ns="localization">
+		<rosparam command="load" file="$(find localization)/yaml/config.yaml" />
+		<node pkg="localization" name="locate" type="locate" output="screen"/>
+	</group>
+	<node pkg="localization" type="laser_filter" name="laser_filter" output="screen">
+		<rosparam command="load" file="$(find localization)/yaml/laser_config.yaml" />
+	</node>
+	<node pkg="suspension_control" type="suspension_control" name="suspension_control" output="screen">
+		<rosparam command="load" file="$(find suspension_control)/yaml/config.yaml" />
+	</node>
+
+
+</launch>
