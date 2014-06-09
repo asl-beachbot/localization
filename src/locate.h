@@ -5,11 +5,14 @@
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
+#include "sensor_msgs/PointCloud.h"
+#include "visualization_msgs/Marker.h"
 #include "localization/InitLocalization.h"
 #include "localization/IOFromBoard.h"
 #include "localization/beach_map.h"
 #include "tf/transform_datatypes.h"
 #include "tf/transform_broadcaster.h"
+#include "tf/transform_listener.h"
 #include "pole.cpp"
 #include <Eigen/Dense>
 #include <cmath>
@@ -27,11 +30,15 @@ class Loc {
 	ros::Publisher pub_pose_;
 	ros::Publisher pub_pole_;
 	ros::Publisher pub_map_;
+	ros::Publisher pub_marker_;
+	ros::Publisher pub_cloud_;
 
 	double b;	//wheel distance of robot
 	double pole_radius;	//radius of reflective poles
+	double laser_height_;
 	bool use_odometry_;	//if using pioneer for testing
 	sensor_msgs::LaserScan scan_;
+	sensor_msgs::PointCloud cloud_;
 	localization::IOFromBoard odom_;
 	localization::IOFromBoard last_odom_;
 	std::vector<Pole> poles_;
@@ -47,6 +54,7 @@ class Loc {
 	double k_s_;
 	double k_th_;
 	double laser_offset_;
+	tf::TransformListener listener_;
 
 	void NormalizeAngle(double& angle);
 	void StateHandler();
@@ -55,18 +63,18 @@ class Loc {
 	void PublishPose();
 	void PublishMap();
 	void PublishTf();
-	std::vector<localization::xy_point> ScanToXY(const std::vector<localization::scan_point> scan);
+	void PublishCloud(const sensor_msgs::PointCloud &cloud);
 	void Locate();
 	void RefreshData();
-	void UpdatePoles(const std::vector<localization::scan_point> &scans_to_sort);
+	void UpdatePoles(const std::vector<Eigen::Vector3d> &scans_to_sort);
 	void GetPose();
 	void EstimateInvisiblePoles();
 	void PrintPose();
 	void CalcPose(const Pole &pole1, const Pole &pole2, std::vector<geometry_msgs::Pose> *pose_vector);
 	bool IsPolePoint(const double &intensity, const double &distance);
-	void ExtractPoleScans(std::vector<localization::scan_point> *scan_pole_points);
-	void CorrectMoveError(std::vector<localization::scan_point> *scan_pole_points);
-	void MinimizeScans(std::vector<localization::scan_point> *scan, const int &threshold = 1);
+	void MinimizeScans(std::vector<Eigen::Vector3d> *scan);
+	void CorrectMoveError(std::vector<Eigen::Vector3d> *scan_pole_points);
+	void ScanToCloud();
 	void ScanCallback(const sensor_msgs::LaserScan &scan);
 	void OdomCallback(const localization::IOFromBoard &odom);
 	bool InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res);

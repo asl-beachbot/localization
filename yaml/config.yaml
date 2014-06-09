@@ -1,15 +1,26 @@
 #localization settings
 use_odometry: false
 #pole_radius: 0.0515
-pole_radius: 0.027
-b: 0.264
-laser_offset: 0.05
-use_testing_path: false
-scan_covariance: 0.004
-k_s: 25.0
-k_th: 25.0
+pole_radius: 0.027 #radius of reflective pole
+b: 0.264 #distance wheel to wheel
+laser_offset: 0.05 #not used
+laser_height: 0.35 #height of laser plane 
+scan_covariance: 0.004 #covariance of laser scanner
+k_s: 0.1 #covariance parameter for odometry
+k_th: 25.0 #covariance parameter for imu
+address: "/dev/ttyUSB0" #address of motor controller
+T: 5.0 #time for one revolution of laser [s]
+#roll_min: -0.175 #minimal roll angle
+#roll_max: 0.115 #maximal roll angle
+#pitch_min: -0.095 #minimal pitch angle
+#pitch_max: 0.193 #maximal pitch angle
+roll_min: -0.06 #minimal roll angle
+roll_max: 0.02 #maximal roll angle
+pitch_min: -0.06 #minimal pitch angle
+pitch_max: 0.06 #maximal pitch angle
 
 #fake scan settings
+use_testing_path: false
 xp1: 0.0
 yp1: 0.0
 xp2: 10.0

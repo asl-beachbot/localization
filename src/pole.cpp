@@ -1,20 +1,20 @@
-#include "pole.h"
+#include "localization/pole.h"
 
-Pole::Pole(const localization::xy_point &xy_coords, const localization::scan_point &laser_coords, const ros::Time &t, const unsigned int &i) {
-	xy_coords_ = xy_coords;
+Pole::Pole(const Line &line, const Eigen::Vector3d &laser_coords, const ros::Time &t, const unsigned int &i) {
+	line_ = line;
 	laser_coords_ = laser_coords;
 	time_ = t;
 	i_ = i;
 	visible_ = true;
 }
 
-void Pole::update(const localization::scan_point &laser_coords, const ros::Time &t) {
+void Pole::update(const Eigen::Vector3d &laser_coords, const ros::Time &t) {
 	time_ = t;
 	laser_coords_ = laser_coords;
 	visible_ = true;
 }
 
-void Pole::update(const localization::scan_point &laser_coords) {
+void Pole::update(const Eigen::Vector3d &laser_coords) {
 	laser_coords_ = laser_coords;
 }
 
@@ -22,11 +22,7 @@ void Pole::disappear() {
 	visible_ = false;
 }
 
-localization::xy_point Pole::xy_coords() const {
-	return 	xy_coords_;
-}
-	
-localization::scan_point Pole::laser_coords() const {
+Eigen::Vector3d Pole::laser_coords() const {
 	return laser_coords_;
 }
 
@@ -40,4 +36,8 @@ unsigned int Pole::i() const {
 
 bool Pole::visible() const {
 	return visible_;
+}
+
+Pole::Line Pole::line() const {
+	return line_;
 }

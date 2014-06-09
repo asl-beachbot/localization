@@ -49,9 +49,9 @@
   <run_depend>std_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
 
-
   <!-- The export tag contains other, unspecified, tags -->
   <export>
+    <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib"/>
     <!-- You can specify that this package is a metapackage here: -->
     <!-- <metapackage/> -->
 

@@ -1,4 +1,5 @@
 #include "locate_initiate.cpp"
+#include <algorithm>
 
 void Loc::NormalizeAngle(double& angle) {
   while(angle > M_PI && ros::ok()) angle -= 2*M_PI;
@@ -8,26 +9,44 @@ void Loc::NormalizeAngle(double& angle) {
 void Loc::PublishPoles() {
 	//ROS_INFO("Publishing poles...");
 	int j = 0;
+	visualization_msgs::Marker line_list;
 	for (int i = 0; i < poles_.size(); i++) {
+		line_list.header = cloud_.header;
+		line_list.header.frame_id = "fixed_frame";
+		line_list.ns = "points_and_lines";
+		line_list.action = visualization_msgs::Marker::ADD;
+		line_list.pose.orientation.w = 1.0;
+		line_list.id = 0;
+		line_list.type = visualization_msgs::Marker::LINE_LIST;
+		line_list.scale.x = poles_[0].line().d;
+		line_list.color.b = 1.0;
+		line_list.color.a = 1.0;
 		if(poles_[i].visible()) {
 			geometry_msgs::PointStamped point;
 			point.header.seq = 1;
 			point.header.stamp = current_time_;
-			point.header.frame_id = "laser_frame";
-			//point.header.frame_id = "fixed_frame";
-			localization::scan_point temp_point;
+			point.header.frame_id = "robot_frame";
+			Eigen::Vector3d temp_point;
 			temp_point = poles_[i].laser_coords();
-			point.point.x = temp_point.distance * cos(temp_point.angle);
-			point.point.y = temp_point.distance * sin(temp_point.angle);
-			//point.point.x = poles_[i].xy_coords().x;
-			//point.point.y = poles_[i].xy_coords().y;
-			point.point.z = 0;
+			point.point.x = temp_point.x();
+			point.point.y = temp_point.y();
+			point.point.z = temp_point.z();
 			pub_pole_.publish(point);
 		}
+		geometry_msgs::Point start, end;
+		start.x = poles_[i].line().p.x(); start.y = poles_[i].line().p.y(); start.z = poles_[i].line().p.z();
+		end.x = poles_[i].line().end.x(); end.y = poles_[i].line().end.y(); end.z = poles_[i].line().end.z();
+		line_list.points.push_back(start);
+		line_list.points.push_back(end);
 		if (poles_[i].visible()) j++;
 	}
-	ROS_INFO("seeing %d poles\n", j);
+	pub_marker_.publish(line_list);
+	ROS_INFO("seeing %d poles", j);
 	//ROS_INFO("Success!");
+}
+
+void Loc::PublishCloud(const sensor_msgs::PointCloud &cloud) {
+	pub_cloud_.publish(cloud);
 }
 
 void Loc::PublishPose() {
@@ -40,14 +59,32 @@ void Loc::PublishPose() {
 	pub_pose_.publish(temp_pose);
 	//ROS_INFO("delay: %fms", (ros::Time::now()-current_time_).toSec()*1000);
 }
+	
+bool sortByAngle(Pole i, Pole j) {return atan2(i.laser_coords().y(), i.laser_coords().x())
+	 < atan2(j.laser_coords().y(), j.laser_coords().x());}
 
 void Loc::PublishMap() {
 	localization::beach_map beach_map;
-	for (int i = 0; i < poles_.size(); i++) {
+	std::vector<Pole> sorted_poles = poles_;
+	std::sort(sorted_poles.begin(), sorted_poles.end(), sortByAngle);
+	for (int i = 0; i < sorted_poles.size(); i++) {
 		geometry_msgs::PointStamped point;
-		point.point.x = poles_[i].xy_coords().x;
-		point.point.y = poles_[i].xy_coords().y;
+		point.point.x = sorted_poles[i].line().p.x();
+		point.point.y = sorted_poles[i].line().p.y();
+		point.point.z = sorted_poles[i].line().p.z();
 		beach_map.poles.push_back(point);
+		localization::line line;
+		line.p.x = sorted_poles[i].line().p.x();
+		line.p.y = sorted_poles[i].line().p.y();
+		line.p.z = sorted_poles[i].line().p.z();
+		line.u.x = sorted_poles[i].line().u.x();
+		line.u.y = sorted_poles[i].line().u.y();
+		line.u.z = sorted_poles[i].line().u.z();
+		line.end.x = sorted_poles[i].line().end.x();
+		line.end.y = sorted_poles[i].line().end.y();
+		line.end.z = sorted_poles[i].line().end.z();
+		line.d = sorted_poles[i].line().d;
+		beach_map.lines.push_back(line);
 	}
 	beach_map.basestation.pose = pose_.pose.pose;
 	double yaw = tf::getYaw(beach_map.basestation.pose.orientation);
@@ -63,13 +100,6 @@ void Loc::PublishTf() {
 	geometry_msgs::Quaternion quat = pose_.pose.pose.orientation;
 	transform.setRotation(tf::Quaternion(quat.x, quat.y, quat.z, quat.w));
 	br.sendTransform(tf::StampedTransform(transform, current_time_, "fixed_frame", "robot_frame"));
-	//transform.setOrigin( tf::Vector3(0.0, 0.0, 0.0));
-	transform.setOrigin( tf::Vector3(0.00, 0, 0.3));
-	tf::Quaternion temp_quat(attitude_.orientation.x, attitude_.orientation.y, attitude_.orientation.z, attitude_.orientation.w);
-	tf::Quaternion dif_quat(tf::createQuaternionFromYaw(tf::getYaw(temp_quat)));
-	temp_quat = dif_quat.inverse()*temp_quat;
-	transform.setRotation(temp_quat);
-	br.sendTransform(tf::StampedTransform(transform, current_time_, "robot_frame", "laser_frame"));
 }
 
 void Loc::PrintPose() {
@@ -78,11 +108,10 @@ void Loc::PrintPose() {
 
 //function to fill the poles with data from the current laser scan
 void Loc::RefreshData() {
-	std::vector<localization::scan_point> locate_scans;	
-	ExtractPoleScans(&locate_scans);	//get relevant scan points
+	std::vector<Eigen::Vector3d> locate_scans;	
+	MinimizeScans(&locate_scans);	//get relevant scan points
 	CorrectMoveError(&locate_scans);	
 	UpdatePoles(locate_scans);		//assign scans to respective poles
-	//if (locate_scans.size() == 0) ROS_WARN("Not seeing any poles");
 }
 
 void Loc::SetInit(const bool &init) {
