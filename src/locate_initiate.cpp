@@ -4,7 +4,6 @@
 
 void Loc::InitiatePoles() {
 	ROS_INFO("Gathering data...");
-	ros::Rate loop_rate(25);
 	//Read parameters for initial scanning
 	std::string address;
 	double rev_time, roll_min, roll_max, pitch_min, pitch_max;
@@ -34,9 +33,11 @@ void Loc::InitiatePoles() {
 	}
 	const double roll_amp = (roll_max - roll_min) / 2, pitch_amp = (pitch_max - pitch_min) / 2;	//angle amplitudes
 	const double roll_mid = (roll_max + roll_min) / 2, pitch_mid = (pitch_max + pitch_min) / 2;	//angle midpoints
-	//SerialCom *serial_com = new SerialCom(address);	//open serial communication
+	SerialCom *serial_com = new SerialCom(address);	//open serial communication
+	ros::Duration(1.0).sleep();
 	sensor_msgs::PointCloud cloud;
 	ros::Time begin = ros::Time::now();
+	ros::Rate loop_rate(25);
 	while ((ros::Time::now() - begin).toSec() < (rev_time + 1) && ros::ok()) {	//gather data for T + 2 seconds
 		ros::spinOnce();	//get one scan and corresponding pointcloud
 		ScanToCloud();
@@ -48,17 +49,17 @@ void Loc::InitiatePoles() {
 		const double current = (ros::Time::now() - begin).toSec();
 		const double roll = roll_mid + roll_amp * sin(current / rev_time * 2 * M_PI);
 		const double pitch = pitch_mid + pitch_amp * cos(current / rev_time * 2*  M_PI);
-		const int roll_data = roll * 1000 / M_PI * 180;	//controller wants degree*1000
-		const int pitch_data = pitch * 1000 / M_PI * 180;	
+		const int roll_data = -roll * 1000 / M_PI * 180;	//controller wants degree*1000
+		const int pitch_data = -pitch * 1000 / M_PI * 180;	
 		std::string data = "set roll ";
 		stringstream ss;
 		ss << roll_data << " pitch " << pitch_data;
 		data.append(ss.str());
-		//ROS_INFO("%s", data.c_str());
-		//serial_com->Send(data);
+		ROS_INFO("%s", data.c_str());
+		serial_com->Send(data);
 		loop_rate.sleep();
 	}
-	//serial_com->Send("roll 0 pitch 0");	//reset laser pose ot start localization and control
+	serial_com->Send("set roll 0 pitch 0");	//reset laser pose ot start localization and control
 	ros::Duration(1.0).sleep();	//give suspension time to go to zero position
 	//delete serial_com;
 	FindPoles find_poles(cloud);

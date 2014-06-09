@@ -1,4 +1,4 @@
-#include "pole.h"
+#include "localization/pole.h"
 
 Pole::Pole(const Line &line, const Eigen::Vector3d &laser_coords, const ros::Time &t, const unsigned int &i) {
 	line_ = line;
