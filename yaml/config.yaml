@@ -14,10 +14,10 @@ T: 5.0 #time for one revolution of laser [s]
 #roll_max: 0.115 #maximal roll angle
 #pitch_min: -0.095 #minimal pitch angle
 #pitch_max: 0.193 #maximal pitch angle
-roll_min: -0.06 #minimal roll angle
-roll_max: 0.02 #maximal roll angle
-pitch_min: -0.06 #minimal pitch angle
-pitch_max: 0.06 #maximal pitch angle
+roll_min: -0.03 #minimal roll angle
+roll_max: 0.03 #maximal roll angle
+pitch_min: -0.03 #minimal pitch angle
+pitch_max: 0.03 #maximal pitch angle
 
 #fake scan settings
 use_testing_path: false

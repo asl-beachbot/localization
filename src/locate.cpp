@@ -305,9 +305,12 @@ void Loc::ImuCallback(const sensor_msgs::Imu &attitude) {
 	//Broadcast transform
 	static tf::TransformBroadcaster br;
 	tf::Transform transform;
-	transform.setOrigin( tf::Vector3(0.0, 0.0, laser_height_));
+	transform.setOrigin( tf::Vector3(0.0, 0.0, laser_height_ - 0.06));
 	transform.setRotation(temp_quat);
-	br.sendTransform(tf::StampedTransform(transform, attitude.header.stamp, "robot_frame", "laser_frame"));
+	br.sendTransform(tf::StampedTransform(transform, attitude.header.stamp, "robot_frame", "imu_frame"));
+	transform.setRotation(tf::Quaternion(0,0,0,1));
+	transform.setOrigin( tf::Vector3(0.013, 0.0, 0.06));
+	br.sendTransform(tf::StampedTransform(transform, attitude.header.stamp, "imu_frame", "laser_frame"));;
 }
 
 bool Loc::InitService(localization::InitLocalization::Request &req, localization::InitLocalization::Response &res) {
